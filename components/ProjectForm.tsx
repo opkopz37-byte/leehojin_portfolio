@@ -12,7 +12,7 @@ import {
 } from "react";
 import MarkdownView from "@/components/MarkdownView";
 import { deleteDraft, saveDraft } from "@/lib/draftStorage";
-import { upsertRemotePost, deleteRemotePost, isGithubConfigured } from "@/lib/githubStorage";
+import { upsertRemotePost, deleteRemotePost, isGithubConfigured, uploadImage } from "@/lib/githubStorage";
 import { SUB_CATEGORIES, type Project, type SubCategory } from "@/lib/projects";
 
 type FormState = {
@@ -134,6 +134,7 @@ export default function ProjectForm({
   const [pushing, setPushing] = useState(false);
   const [pushStatus, setPushStatus] = useState<"idle" | "success" | "error">("idle");
   const [pushError, setPushError] = useState<string | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
 
   useEffect(() => {
     if (slugDirty) return;
@@ -264,14 +265,27 @@ export default function ProjectForm({
         continue;
       }
       try {
-        const dataUrl = await readAsDataUrl(file);
         const isVideo = file.type.startsWith("video/");
         const isImage = file.type.startsWith("image/");
         if (isVideo) {
+          const dataUrl = await readAsDataUrl(file);
           insertSnippet(`<video src="${dataUrl}" controls playsinline></video>`);
           inserted = true;
         } else if (isImage) {
-          insertSnippet(`![${file.name}](${dataUrl})`);
+          const dataUrl = await readAsDataUrl(file);
+          let url = dataUrl;
+          if (isGithubConfigured()) {
+            setImageUploading(true);
+            try {
+              url = await uploadImage(file.name, dataUrl);
+            } catch (err) {
+              console.error(err);
+              alert(`이미지 GitHub 업로드 실패: ${err instanceof Error ? err.message : "오류"}. 로컬 base64로 대체합니다.`);
+            } finally {
+              setImageUploading(false);
+            }
+          }
+          insertSnippet(`![${file.name}](${url})`);
           inserted = true;
         } else {
           alert(`${file.name}: 이미지/영상만 지원합니다.`);
@@ -414,12 +428,26 @@ export default function ProjectForm({
               const file = e.target.files?.[0];
               if (!file) return;
               if (file.size > MAX_FILE_BYTES) {
-                alert(`${(file.size / 1024 / 1024).toFixed(1)}MB — 5MB 이하 파일만 가능합니다.`);
+                alert(`${(file.size / 1024 / 1024).toFixed(1)}MB — 10MB 이하 파일만 가능합니다.`);
                 return;
               }
               try {
-                const url = await readAsDataUrl(file);
-                set("coverImage", url);
+                const dataUrl = await readAsDataUrl(file);
+                if (isGithubConfigured()) {
+                  setImageUploading(true);
+                  try {
+                    const url = await uploadImage(file.name, dataUrl);
+                    set("coverImage", url);
+                  } catch (err) {
+                    console.error(err);
+                    alert(`이미지 GitHub 업로드 실패: ${err instanceof Error ? err.message : "오류"}. 로컬 base64로 대체합니다.`);
+                    set("coverImage", dataUrl);
+                  } finally {
+                    setImageUploading(false);
+                  }
+                } else {
+                  set("coverImage", dataUrl);
+                }
               } catch {
                 alert("이미지 읽기 실패");
               }
@@ -558,7 +586,8 @@ export default function ProjectForm({
               }`}
             />
             <p className="mt-2 font-mono text-[11px] text-muted">
-              이미지·GIF·영상을 위로 끌어다 놓거나 붙여넣기(⌘V)하면 그 자리에 들어갑니다. (5MB 이하)
+              이미지·GIF를 위로 끌어다 놓거나 붙여넣기(⌘V)하면 자동으로 GitHub에 업로드됩니다.
+              {imageUploading && <span className="ml-2 text-accent">⏳ 이미지 업로드 중…</span>}
             </p>
           </div>
 

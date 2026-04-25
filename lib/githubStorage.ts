@@ -56,3 +56,27 @@ export async function deleteRemotePost(slug: string): Promise<void> {
   if (filtered.length === posts.length) return;
   await writeFile(filtered, sha, `post: delete "${slug}"`);
 }
+
+export async function uploadImage(filename: string, dataUrl: string): Promise<string> {
+  if (!isGithubConfigured()) throw new Error("GitHub 환경변수가 설정되지 않았습니다.");
+  const base64 = dataUrl.split(",")[1];
+  if (!base64) throw new Error("이미지 데이터 형식이 잘못되었습니다.");
+  const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const uploadName = `${Date.now()}-${safeName}`;
+  const filePath = `public/images/${uploadName}`;
+  const apiUrl = `https://api.github.com/repos/${OWNER}/${REPO}/contents/${filePath}`;
+  const res = await fetch(apiUrl, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ message: `image: upload ${uploadName}`, content: base64, branch: BRANCH }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(err.message ?? `GitHub API 오류 (${res.status})`);
+  }
+  return `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${filePath}`;
+}

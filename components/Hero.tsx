@@ -35,7 +35,7 @@ export default function Hero() {
   return (
     <section
       id="home"
-      className="relative flex min-h-[100svh] items-end px-6 pt-24 pb-28 overflow-hidden"
+      className="relative flex min-h-[100svh] items-center px-6 pt-20 pb-16 overflow-hidden"
     >
       {hasSlides ? (
         <div className="absolute inset-0">
@@ -49,7 +49,7 @@ export default function Hero() {
               }`}
             />
           ))}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/65 to-background/10" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/75 to-background/30" />
         </div>
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-accent/8 via-background to-background" />

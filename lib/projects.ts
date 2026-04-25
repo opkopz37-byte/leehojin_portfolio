@@ -1,5 +1,8 @@
 import type { Block } from "./blocks";
 
+export const SUB_CATEGORIES = ["UNREAL ENGINE", "WEB"] as const;
+export type SubCategory = (typeof SUB_CATEGORIES)[number];
+
 export type MediaItem =
   | {
       type: "image";
@@ -30,6 +33,8 @@ export type Project = {
   summary: string;
   /** Cover / thumbnail image URL or data URL. Shown on list cards and hero. */
   coverImage?: string;
+  /** Sub-category for filtering */
+  subCategory?: SubCategory;
   /** Markdown body — always source of truth for rendering. */
   body: string;
   /** When set, the post was edited in block mode; preserves structure for round-trip editing. */

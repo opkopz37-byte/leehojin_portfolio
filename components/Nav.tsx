@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { categories } from "@/lib/categories";
 import { siteConfig } from "@/lib/config";
+import { getMergedConfig } from "@/lib/siteOverrides";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const links = [
   { href: "/", label: "Home" },
@@ -14,6 +16,14 @@ const links = [
 export default function Nav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [cfg, setCfg] = useState(siteConfig);
+
+  useEffect(() => {
+    setCfg(getMergedConfig());
+    const update = () => setCfg(getMergedConfig());
+    window.addEventListener("site-overrides-changed", update);
+    return () => window.removeEventListener("site-overrides-changed", update);
+  }, []);
 
   useEffect(() => {
     setOpen(false);
@@ -35,12 +45,11 @@ export default function Nav() {
   return (
     <header className="fixed inset-x-0 top-0 z-50 bg-background/90 backdrop-blur border-b border-border">
       <nav className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-        <Link href="/" className="font-mono text-sm tracking-tight">
-          <span className="text-accent">/</span>
-          {siteConfig.name.toLowerCase().replace(/\s+/g, "-")}
+        <Link href="/" className="font-mono text-sm font-semibold tracking-[0.18em]">
+          {cfg.name}
         </Link>
 
-        <ul className="hidden gap-7 md:flex">
+        <ul className="hidden gap-5 md:flex items-center">
           {links.map((l) => (
             <li key={l.href}>
               <Link
@@ -57,6 +66,8 @@ export default function Nav() {
           ))}
         </ul>
 
+        <div className="flex items-center gap-1 md:hidden">
+          <ThemeToggle />
         <button
           type="button"
           aria-label={open ? "메뉴 닫기" : "메뉴 열기"}
@@ -83,6 +94,12 @@ export default function Nav() {
             />
           </span>
         </button>
+        </div>
+
+        {/* Desktop theme toggle */}
+        <div className="hidden md:block">
+          <ThemeToggle />
+        </div>
       </nav>
 
       <div

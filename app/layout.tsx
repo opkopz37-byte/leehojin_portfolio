@@ -4,6 +4,7 @@ import "./globals.css";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import AdminBar from "@/components/AdminBar";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { siteConfig } from "@/lib/config";
 
 const inter = Inter({
@@ -30,12 +31,28 @@ export default function RootLayout({
     <html
       lang="ko"
       className={`${inter.variable} ${mono.variable} scroll-smooth antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        {/* Anti-FOUC: set theme before first paint */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var t = localStorage.getItem("portfolio.theme");
+                if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+              } catch {}
+            `,
+          }}
+        />
+      </head>
       <body className="min-h-screen bg-background text-foreground">
-        <Nav />
-        <main>{children}</main>
-        <Footer />
-        <AdminBar />
+        <ThemeProvider>
+          <Nav />
+          <main>{children}</main>
+          <Footer />
+          <AdminBar />
+        </ThemeProvider>
       </body>
     </html>
   );

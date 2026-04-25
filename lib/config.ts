@@ -6,7 +6,7 @@
 
 export const siteConfig = {
   /** 이름 — 네비게이션, 히어로, 푸터, 메타데이터에 사용 */
-  name: "Your Name",
+  name: "LEE HOJIN",
 
   /** 직함 — 히어로 섹션 */
   title: "Senior Technical Artist",
@@ -26,4 +26,7 @@ export const siteConfig = {
   linkedin: "https://linkedin.com/in/yourname",
   artstation: "https://artstation.com/yourname",
   twitter: "",
+
+  /** 푸터 하단 왼쪽 문구 */
+  footerNote: "Built with Next.js.",
 };

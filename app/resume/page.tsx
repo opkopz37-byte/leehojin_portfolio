@@ -1,94 +1,124 @@
-import type { Metadata } from "next";
+"use client";
+
+import { useState } from "react";
 import PageHeader from "@/components/PageHeader";
+import InlineEdit from "@/components/InlineEdit";
+import { useAdmin } from "@/hooks/useAdmin";
 
-export const metadata: Metadata = {
-  title: "Resume — Your Name",
-  description: "경력과 학력을 시간순으로 정리한 페이지.",
-};
+type Entry = { role: string; company: string; period: string; desc: string };
 
-const experience = [
-  {
-    role: "Senior Technical Artist",
-    company: "Studio Placeholder",
-    period: "2023 — Present",
-    desc: "오픈월드 타이틀의 셰이딩/VFX 파이프라인 전반 담당. 아티스트 워크플로우 개선과 런타임 최적화 주도.",
-  },
-  {
-    role: "Technical Artist",
-    company: "Game Company A",
-    period: "2020 — 2023",
-    desc: "콘솔 출시작에서 캐릭터/환경 셰이더 개발. 머티리얼 라이브러리 표준화와 검수 자동화 도구 제작.",
-  },
-  {
-    role: "Junior Technical Artist",
-    company: "Game Company B",
-    period: "2018 — 2020",
-    desc: "모바일 RPG 라이브 프로젝트에서 이펙트와 최적화 지원. 빌드/리포트 자동화 스크립트 운영.",
-  },
+const defaultExperience: Entry[] = [
+  { role: "Senior Technical Artist", company: "Studio Placeholder", period: "2023 — Present", desc: "오픈월드 타이틀의 셰이딩/VFX 파이프라인 전반 담당. 아티스트 워크플로우 개선과 런타임 최적화 주도." },
+  { role: "Technical Artist", company: "Game Company A", period: "2020 — 2023", desc: "콘솔 출시작에서 캐릭터/환경 셰이더 개발. 머티리얼 라이브러리 표준화와 검수 자동화 도구 제작." },
+  { role: "Junior Technical Artist", company: "Game Company B", period: "2018 — 2020", desc: "모바일 RPG 라이브 프로젝트에서 이펙트와 최적화 지원. 빌드/리포트 자동화 스크립트 운영." },
+];
+const defaultEducation: Entry[] = [
+  { role: "B.S. in Computer Science", company: "University Placeholder", period: "2014 — 2018", desc: "그래픽스 및 게임 개발 동아리 활동. 졸업 프로젝트로 실시간 글로벌 일루미네이션 구현." },
 ];
 
-const education = [
-  {
-    role: "B.S. in Computer Science",
-    company: "University Placeholder",
-    period: "2014 — 2018",
-    desc: "그래픽스 및 게임 개발 동아리 활동. 졸업 프로젝트로 실시간 글로벌 일루미네이션 구현.",
-  },
+const defaultAwards: Entry[] = [
+  { role: "Best Technical Demo", company: "KGC — Korea Game Conference", period: "2023", desc: "실시간 GI 프로토타입 데모로 기술 부문 수상." },
 ];
 
-function Block({
-  items,
-}: {
-  items: { role: string; company: string; period: string; desc: string }[];
-}) {
-  return (
-    <ul className="space-y-8">
-      {items.map((it) => (
-        <li
-          key={it.role + it.period}
-          className="grid gap-2 sm:grid-cols-[180px_1fr]"
-        >
-          <div className="font-mono text-xs text-muted pt-1">{it.period}</div>
-          <div>
-            <h3 className="text-base font-semibold">{it.role}</h3>
-            <p className="text-sm text-muted">{it.company}</p>
-            <p className="mt-2 text-sm leading-relaxed text-muted">{it.desc}</p>
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
+const EXP_KEY = "portfolio.resume.experience";
+const EDU_KEY = "portfolio.resume.education";
+const AWARDS_KEY = "portfolio.resume.awards";
+
+function load(key: string, def: Entry[]) {
+  if (typeof window === "undefined") return def;
+  try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : def; } catch { return def; }
 }
 
 export default function ResumePage() {
+  const admin = useAdmin();
+  const [exp, setExp] = useState(defaultExperience);
+  const [edu, setEdu] = useState(defaultEducation);
+  const [awards, setAwards] = useState(defaultAwards);
+  const [hydrated, setHydrated] = useState(false);
+
+  if (!hydrated && typeof window !== "undefined") {
+    setExp(load(EXP_KEY, defaultExperience));
+    setEdu(load(EDU_KEY, defaultEducation));
+    setAwards(load(AWARDS_KEY, defaultAwards));
+    setHydrated(true);
+  }
+
+  function saveExp(v: Entry[]) { setExp(v); localStorage.setItem(EXP_KEY, JSON.stringify(v)); }
+  function saveEdu(v: Entry[]) { setEdu(v); localStorage.setItem(EDU_KEY, JSON.stringify(v)); }
+  function saveAwards(v: Entry[]) { setAwards(v); localStorage.setItem(AWARDS_KEY, JSON.stringify(v)); }
+
+  function makeUpdater(list: Entry[], save: (v: Entry[]) => void, i: number) {
+    return (field: keyof Entry) => (val: string) => {
+      const next = list.map((e, idx) => idx === i ? { ...e, [field]: val } : e);
+      save(next);
+    };
+  }
+
+  function EntryBlock({ items, save }: { items: Entry[]; save: (v: Entry[]) => void }) {
+    return (
+      <ul className="space-y-8">
+        {items.map((it, i) => {
+          const upd = makeUpdater(items, save, i);
+          return (
+            <li key={i} className="grid gap-2 sm:grid-cols-[180px_1fr] group/entry relative">
+              <div className="font-mono text-xs text-muted pt-1">
+                {admin ? <InlineEdit value={it.period} onSave={upd("period")} /> : it.period}
+              </div>
+              <div>
+                <h3 className="text-base font-semibold">
+                  {admin ? <InlineEdit value={it.role} onSave={upd("role")} /> : it.role}
+                </h3>
+                <p className="text-sm text-muted">
+                  {admin ? <InlineEdit value={it.company} onSave={upd("company")} /> : it.company}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-muted">
+                  {admin ? <InlineEdit value={it.desc} onSave={upd("desc")} multiline /> : it.desc}
+                </p>
+              </div>
+              {admin && (
+                <button
+                  type="button"
+                  onClick={() => save(items.filter((_, idx) => idx !== i))}
+                  className="absolute top-0 right-0 opacity-0 group-hover/entry:opacity-100 w-5 h-5 rounded-full bg-card border border-border text-xs text-muted hover:text-foreground transition flex items-center justify-center"
+                >
+                  ×
+                </button>
+              )}
+            </li>
+          );
+        })}
+        {admin && (
+          <li>
+            <button
+              type="button"
+              onClick={() => save([...items, { role: "새 역할", company: "회사명", period: "Year", desc: "설명" }])}
+              className="font-mono text-xs text-accent border border-dashed border-accent/30 rounded-full px-3 py-1 hover:bg-accent/10 transition"
+            >
+              + 항목 추가
+            </button>
+          </li>
+        )}
+      </ul>
+    );
+  }
+
   return (
     <>
-      <PageHeader
-        number="03"
-        label="Resume"
-        title="Resume"
-        description="지금까지 거쳐 온 팀과 프로젝트를 시간순으로 정리했습니다."
-      />
+      <PageHeader number="03" label="Resume" title="Resume" description="지금까지 거쳐 온 팀과 프로젝트를 시간순으로 정리했습니다." />
 
       <section className="border-t border-border px-6 py-16 sm:py-24">
         <div className="mx-auto max-w-5xl grid gap-16">
           <div>
             <h2 className="font-mono text-xs text-muted mb-6">EXPERIENCE</h2>
-            <Block items={experience} />
+            <EntryBlock items={exp} save={saveExp} />
           </div>
-
           <div>
             <h2 className="font-mono text-xs text-muted mb-6">EDUCATION</h2>
-            <Block items={education} />
+            <EntryBlock items={edu} save={saveEdu} />
           </div>
-
           <div>
-            <a
-              href="#"
-              className="inline-flex items-center gap-2 rounded-full border border-border px-5 py-2.5 text-sm font-medium hover:border-foreground transition"
-            >
-              Download CV (PDF) ↓
-            </a>
+            <h2 className="font-mono text-xs text-muted mb-6">AWARDS</h2>
+            <EntryBlock items={awards} save={saveAwards} />
           </div>
         </div>
       </section>

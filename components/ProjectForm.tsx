@@ -12,12 +12,13 @@ import {
 } from "react";
 import MarkdownView from "@/components/MarkdownView";
 import { deleteDraft, saveDraft } from "@/lib/draftStorage";
-import type { Project } from "@/lib/projects";
+import { SUB_CATEGORIES, type Project, type SubCategory } from "@/lib/projects";
 
 type FormState = {
   slug: string;
   title: string;
   category: Project["category"];
+  subCategory: string;
   company: string;
   startDate: string;
   endDate: string;
@@ -32,6 +33,7 @@ const empty: FormState = {
   slug: "",
   title: "",
   category: "Project",
+  subCategory: "",
   company: "",
   startDate: "",
   endDate: "",
@@ -69,6 +71,7 @@ function toFormState(p: Partial<Project> | undefined): FormState {
     slug: p.slug ?? "",
     title: p.title ?? "",
     category: (p.category as Project["category"]) ?? "Project",
+    subCategory: p.subCategory ?? "",
     company: p.company ?? "",
     startDate: p.startDate ?? "",
     endDate: p.endDate ?? "",
@@ -85,6 +88,7 @@ function toProject(s: FormState): Project {
     slug: s.slug.trim(),
     title: s.title.trim(),
     category: s.category,
+    subCategory: (s.subCategory as SubCategory) || undefined,
     company:
       s.category === "Project" ? s.company.trim() || undefined : undefined,
     startDate: s.startDate || undefined,
@@ -411,6 +415,19 @@ export default function ProjectForm({
             >
               <option value="Project">Project</option>
               <option value="Personal">Personal</option>
+            </select>
+          </Field>
+
+          <Field label="Sub Category">
+            <select
+              value={s.subCategory}
+              onChange={(e) => set("subCategory", e.target.value)}
+              className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm outline-none focus:border-foreground"
+            >
+              <option value="">— 선택 안함 —</option>
+              {SUB_CATEGORIES.map((sc) => (
+                <option key={sc} value={sc}>{sc}</option>
+              ))}
             </select>
           </Field>
 

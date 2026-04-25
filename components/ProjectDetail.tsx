@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import MarkdownView from "@/components/MarkdownView";
 import { MediaGallery } from "@/components/Media";
 import { formatProjectDate, type Project } from "@/lib/projects";
+import { useAdmin } from "@/hooks/useAdmin";
 
 export default function ProjectDetail({
   project,
@@ -13,6 +16,8 @@ export default function ProjectDetail({
   editHref?: string;
 }) {
   const projectDate = formatProjectDate(project.startDate, project.endDate);
+  const admin = useAdmin();
+  const resolvedEditHref = editHref ?? (admin ? `/work/edit?slug=${project.slug}` : undefined);
 
   return (
     <article>
@@ -25,9 +30,9 @@ export default function ProjectDetail({
             >
               ← All work
             </Link>
-            {editHref && (
+            {resolvedEditHref && (
               <Link
-                href={editHref}
+                href={resolvedEditHref}
                 className="font-mono text-xs text-muted hover:text-foreground transition"
               >
                 Edit ✎

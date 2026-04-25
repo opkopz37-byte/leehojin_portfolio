@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import { deleteDraft } from "@/lib/draftStorage";
+import { deleteRemotePost } from "@/lib/githubStorage";
 import { projects, SUB_CATEGORIES, type SubCategory, type Project } from "@/lib/projects";
 import { useDrafts } from "@/lib/useDrafts";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -53,6 +54,7 @@ export default function WorkPage() {
   function onDeleteDraft(slug: string) {
     if (!confirm("이 글을 삭제할까요?")) return;
     deleteDraft(slug);
+    deleteRemotePost(slug).catch(() => {});
   }
 
   return (

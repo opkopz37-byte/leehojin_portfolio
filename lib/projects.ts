@@ -1,4 +1,5 @@
 import type { Block } from "./blocks";
+import postsJson from "../public/data/posts.json";
 
 export const SUB_CATEGORIES = ["UNREAL ENGINE", "WEB"] as const;
 export type SubCategory = (typeof SUB_CATEGORIES)[number];
@@ -43,7 +44,10 @@ export type Project = {
   links?: { label: string; href: string }[];
 };
 
-export const projects: Project[] = [
+const _remotePosts = postsJson as unknown as Project[];
+const _remoteSlugSet = new Set(_remotePosts.map((p) => p.slug));
+
+const _staticProjects: Project[] = [
   {
     slug: "project-aurora",
     title: "Project Aurora — Dynamic Sky System",
@@ -169,6 +173,12 @@ Kajiya–Kay, Marschner, Marschner-near-field 변형을 성능/룩 관점에서 
 각 모델의 성능 프로파일과 권장 사용 시나리오를 정리한 내부 R&D 노트.`,
     media: [],
   },
+];
+
+// Remote posts (from public/data/posts.json) take priority over static placeholders
+export const projects: Project[] = [
+  ..._remotePosts,
+  ..._staticProjects.filter((p) => !_remoteSlugSet.has(p.slug)),
 ];
 
 export function getProject(slug: string): Project | undefined {

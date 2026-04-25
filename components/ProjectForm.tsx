@@ -12,6 +12,7 @@ import {
 } from "react";
 import MarkdownView from "@/components/MarkdownView";
 import { deleteDraft, saveDraft } from "@/lib/draftStorage";
+import { upsertRemotePost, deleteRemotePost, isGithubConfigured } from "@/lib/githubStorage";
 import { SUB_CATEGORIES, type Project, type SubCategory } from "@/lib/projects";
 
 type FormState = {
@@ -44,7 +45,7 @@ const empty: FormState = {
   body: "",
 };
 
-const MAX_FILE_BYTES = 5 * 1024 * 1024;
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 function slugify(s: string): string {
   return s
@@ -130,6 +131,9 @@ export default function ProjectForm({
   const [warning, setWarning] = useState<{ issues: string[] } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [pushing, setPushing] = useState(false);
+  const [pushStatus, setPushStatus] = useState<"idle" | "success" | "error">("idle");
+  const [pushError, setPushError] = useState<string | null>(null);
 
   useEffect(() => {
     if (slugDirty) return;
@@ -182,6 +186,22 @@ export default function ProjectForm({
     if (mode === "new") router.replace(`/work/edit?slug=${result.slug}`);
   }
 
+  async function pushToGitHub(p: Project) {
+    if (!isGithubConfigured()) return;
+    setPushing(true);
+    setPushStatus("idle");
+    setPushError(null);
+    try {
+      await upsertRemotePost(p);
+      setPushStatus("success");
+    } catch (err) {
+      setPushStatus("error");
+      setPushError(err instanceof Error ? err.message : "GitHub 저장 실패");
+    } finally {
+      setPushing(false);
+    }
+  }
+
   function onUpload() {
     const issues = collectIssues();
     if (issues.length > 0) {
@@ -190,12 +210,14 @@ export default function ProjectForm({
     }
     const result = persist({ uploaded: true });
     if (!result) return;
+    pushToGitHub(project);
     if (mode === "new") router.replace(`/work/edit?slug=${result.slug}`);
   }
 
   function onForceUpload() {
     const result = persist({ uploaded: true });
     if (!result) return;
+    pushToGitHub(project);
     if (mode === "new") router.replace(`/work/edit?slug=${result.slug}`);
   }
 
@@ -203,6 +225,7 @@ export default function ProjectForm({
     if (!originalSlug) return;
     if (!confirm("이 글을 삭제할까요?")) return;
     deleteDraft(originalSlug);
+    deleteRemotePost(originalSlug).catch(() => {});
     router.push("/work");
   }
 
@@ -229,13 +252,14 @@ export default function ProjectForm({
     });
   }
 
-  async function handleFiles(files: FileList | File[]) {
+  async function handleFiles(files: FileList | File[], switchToPreview = false) {
     const list = Array.from(files);
+    let inserted = false;
     for (const file of list) {
       if (file.size > MAX_FILE_BYTES) {
         alert(
           `${file.name}는 ${(file.size / 1024 / 1024).toFixed(1)}MB로 큽니다.\n` +
-            `5MB 이하 파일만 본문에 직접 넣을 수 있어요.`,
+            `10MB 이하 파일만 본문에 직접 넣을 수 있어요.`,
         );
         continue;
       }
@@ -244,11 +268,11 @@ export default function ProjectForm({
         const isVideo = file.type.startsWith("video/");
         const isImage = file.type.startsWith("image/");
         if (isVideo) {
-          insertSnippet(
-            `<video src="${dataUrl}" controls playsinline></video>`,
-          );
+          insertSnippet(`<video src="${dataUrl}" controls playsinline></video>`);
+          inserted = true;
         } else if (isImage) {
           insertSnippet(`![${file.name}](${dataUrl})`);
+          inserted = true;
         } else {
           alert(`${file.name}: 이미지/영상만 지원합니다.`);
         }
@@ -257,6 +281,7 @@ export default function ProjectForm({
         alert(`${file.name} 읽기 실패`);
       }
     }
+    if (inserted && switchToPreview) setBodyTab("preview");
   }
 
   function onPaste(e: ClipboardEvent<HTMLTextAreaElement>) {
@@ -271,7 +296,7 @@ export default function ProjectForm({
     }
     if (files.length > 0) {
       e.preventDefault();
-      handleFiles(files);
+      handleFiles(files, true); // paste → auto-switch to preview
     }
   }
 
@@ -279,7 +304,7 @@ export default function ProjectForm({
     setDragOver(false);
     if (e.dataTransfer.files.length > 0) {
       e.preventDefault();
-      handleFiles(e.dataTransfer.files);
+      handleFiles(e.dataTransfer.files, true); // drop → auto-switch to preview
     }
   }
 
@@ -553,9 +578,10 @@ export default function ProjectForm({
           <button
             type="button"
             onClick={onUpload}
-            className="inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-base font-semibold text-white hover:opacity-90 active:scale-[0.98] transition"
+            disabled={pushing}
+            className="inline-flex items-center gap-2 rounded-full bg-accent px-6 py-3 text-base font-semibold text-white hover:opacity-90 active:scale-[0.98] disabled:opacity-60 transition"
           >
-            {uploaded ? "업로드 갱신" : "업로드"}
+            {pushing ? "저장 중…" : uploaded ? "업로드 갱신" : "업로드"}
           </button>
           <button
             type="button"
@@ -578,11 +604,17 @@ export default function ProjectForm({
         {saveError && (
           <p className="mt-3 font-mono text-xs text-red-500">{saveError}</p>
         )}
+        {pushStatus === "success" && (
+          <p className="mt-3 font-mono text-xs text-green-600 dark:text-green-400">
+            ✓ GitHub에 저장됨 — 약 1~2분 후 배포가 자동 완료됩니다.
+          </p>
+        )}
+        {pushStatus === "error" && pushError && (
+          <p className="mt-3 font-mono text-xs text-red-500">GitHub 오류: {pushError}</p>
+        )}
 
         <p className="mt-4 font-mono text-[11px] text-muted">
-          이 브라우저(localStorage)에 저장됩니다. 다른 사람도 보게 하려면 /work 의{" "}
-          <code className="font-mono">Export drafts ↓</code> 로 받은 JSON을{" "}
-          <code className="font-mono">lib/projects.ts</code> 에 추가해 커밋하세요.
+          업로드 시 GitHub 저장소에 자동 커밋되어 영구 저장됩니다.
         </p>
       </div>
     </div>

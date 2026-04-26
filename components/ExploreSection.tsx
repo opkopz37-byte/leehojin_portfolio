@@ -86,25 +86,25 @@ export default function ExploreSection() {
           </h2>
         </div>
 
-        <ul className="grid gap-4 sm:grid-cols-2">
+        <ul className="grid gap-3 sm:gap-4 grid-cols-2">
           {categories.map((c) => (
             <li key={c.slug}>
               <Link
                 href={c.href}
-                className="group flex h-full flex-col justify-between gap-6 rounded-2xl border border-border bg-card p-8 hover:border-foreground transition"
+                className="group flex h-full flex-col justify-between gap-4 sm:gap-6 rounded-xl sm:rounded-2xl border border-border bg-card p-4 sm:p-8 hover:border-foreground transition"
               >
                 <div>
                   <p className="font-mono text-xs text-accent mb-3">
                     {c.number} · {c.label}
                   </p>
-                  <h3 className="text-xl font-semibold tracking-tight">
+                  <h3 className="text-sm sm:text-xl font-semibold tracking-tight">
                     {admin ? (
                       <InlineEdit value={get(c, "title")} onSave={update(c, "title")} />
                     ) : (
                       get(c, "title")
                     )}
                   </h3>
-                  <p className="mt-3 text-sm leading-relaxed text-muted">
+                  <p className="mt-2 sm:mt-3 text-xs sm:text-sm leading-relaxed text-muted hidden sm:block">
                     {admin ? (
                       <InlineEdit value={get(c, "blurb")} onSave={update(c, "blurb")} multiline />
                     ) : (
@@ -112,7 +112,7 @@ export default function ExploreSection() {
                     )}
                   </p>
                 </div>
-                <span className="font-mono text-xs text-muted group-hover:text-foreground transition">
+                <span className="font-mono text-[10px] sm:text-xs text-muted group-hover:text-foreground transition">
                   Open {c.label} →
                 </span>
               </Link>

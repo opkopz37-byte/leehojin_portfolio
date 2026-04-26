@@ -103,7 +103,7 @@ export default function AboutPage() {
               </button>
             )}
           </div>
-          <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-3">
+          <div className="grid gap-6 grid-cols-2 md:grid-cols-3">
             {expertise.map((e, i) => (
               <div key={i} className="space-y-2 relative group/exp">
                 <h3 className="text-base font-semibold">

@@ -120,7 +120,7 @@ export default function Hero() {
             type="button"
             aria-label="이전 슬라이드"
             onClick={() => setIdx((i) => (i - 1 + slideImages.length) % slideImages.length)}
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full border border-white/20 bg-black/20 text-white hover:bg-black/40 transition backdrop-blur-sm"
+            className="absolute left-3 sm:left-4 bottom-20 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-white/20 bg-black/30 text-white hover:bg-black/50 transition backdrop-blur-sm text-sm"
           >
             ←
           </button>
@@ -128,7 +128,7 @@ export default function Hero() {
             type="button"
             aria-label="다음 슬라이드"
             onClick={() => setIdx((i) => (i + 1) % slideImages.length)}
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full border border-white/20 bg-black/20 text-white hover:bg-black/40 transition backdrop-blur-sm"
+            className="absolute right-3 sm:right-4 bottom-20 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full border border-white/20 bg-black/30 text-white hover:bg-black/50 transition backdrop-blur-sm text-sm"
           >
             →
           </button>

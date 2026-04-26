@@ -81,20 +81,20 @@ export default function WorkPage() {
         description="셰이더, 파이프라인, R&D 작업을 한자리에 모았습니다."
       />
 
-      <section className="border-t border-border px-6 py-12 sm:py-16">
+      <section className="border-t border-border px-4 sm:px-6 py-8 sm:py-16">
         <div className="mx-auto max-w-5xl">
 
           {/* Filters row */}
-          <div className="mb-8 flex flex-col gap-3">
+          <div className="mb-6 sm:mb-8 flex flex-col gap-2 sm:gap-3">
             <div className="flex flex-wrap items-center gap-2">
               {/* Main category */}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
                 {MAIN_FILTERS.map((f) => (
                   <button
                     key={f}
                     type="button"
                     onClick={() => setMain(f)}
-                    className={`rounded-full px-4 py-1.5 text-sm transition border ${
+                    className={`rounded-full px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm transition border ${
                       main === f
                         ? "bg-foreground text-background border-foreground"
                         : "border-border text-muted hover:text-foreground hover:border-foreground"
@@ -119,11 +119,11 @@ export default function WorkPage() {
             </div>
 
             {/* Sub-category filter */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={() => setSub("All")}
-                className={`rounded-full px-3 py-1 text-xs font-mono transition border ${
+                className={`rounded-full px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-mono transition border ${
                   sub === "All"
                     ? "bg-accent/10 text-accent border-accent/40"
                     : "border-border text-muted hover:text-foreground hover:border-foreground"
@@ -136,7 +136,7 @@ export default function WorkPage() {
                   key={s}
                   type="button"
                   onClick={() => setSub(s)}
-                  className={`rounded-full px-3 py-1 text-xs font-mono transition border ${
+                  className={`rounded-full px-2.5 sm:px-3 py-0.5 sm:py-1 text-[10px] sm:text-xs font-mono transition border ${
                     sub === s
                       ? "bg-accent/10 text-accent border-accent/40"
                       : "border-border text-muted hover:text-foreground hover:border-foreground"
@@ -149,37 +149,38 @@ export default function WorkPage() {
           </div>
 
           {/* Grid */}
-          <ul className="grid gap-6 sm:grid-cols-2">
+          <ul className="grid gap-3 sm:gap-6 grid-cols-2 sm:grid-cols-2">
             {visible.map((r) => (
               <li key={(r.isDraft ? "d:" : "p:") + r.slug} className="relative">
                 <Link
                   href={r.href}
-                  className="group block h-full rounded-2xl border border-border bg-card hover:border-foreground transition overflow-hidden"
+                  className="group block h-full rounded-xl sm:rounded-2xl border border-border bg-card hover:border-foreground transition overflow-hidden"
                 >
                   {r.coverImage && (
                     <div className="relative aspect-video overflow-hidden bg-card/50">
                       <img
                         src={r.coverImage}
                         alt={r.title}
+                        loading="lazy"
                         className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                       />
-                      <span className="absolute top-3 left-3 rounded px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider bg-black/50 text-white backdrop-blur-sm">
+                      <span className="absolute top-2 left-2 sm:top-3 sm:left-3 rounded px-1.5 py-0.5 font-mono text-[9px] sm:text-[10px] uppercase tracking-wider bg-black/50 text-white backdrop-blur-sm">
                         {r.category}
                       </span>
                     </div>
                   )}
 
-                  <div className="p-6">
+                  <div className="p-3 sm:p-6">
                     {!r.coverImage && (
-                      <span className="inline-block mb-3 rounded px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider border border-border text-muted">
+                      <span className="inline-block mb-2 sm:mb-3 rounded px-1.5 py-0.5 font-mono text-[9px] sm:text-[10px] uppercase tracking-wider border border-border text-muted">
                         {r.category}
                       </span>
                     )}
-                    <div className="flex items-start justify-between gap-4 mb-3">
-                      <h3 className="text-lg font-semibold leading-tight pr-14">
+                    <div className="flex items-start justify-between gap-2 mb-2 sm:mb-3">
+                      <h3 className="text-xs sm:text-lg font-semibold leading-tight">
                         {r.title || "(제목 없음)"}
                       </h3>
-                      <div className="flex flex-col items-end gap-1 shrink-0">
+                      <div className="hidden sm:flex flex-col items-end gap-1 shrink-0">
                         {r.isDraft && !r.uploaded && (
                           <span className="rounded-full bg-accent/10 text-accent border border-accent/30 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider">
                             {r.overrides ? "Draft override" : "Draft"}
@@ -199,7 +200,7 @@ export default function WorkPage() {
                     </div>
 
                     {(r.company || r.startDate || r.endDate) && (
-                      <p className="font-mono text-[11px] text-muted mb-2">
+                      <p className="hidden sm:block font-mono text-[11px] text-muted mb-2">
                         {[
                           r.company,
                           (r.startDate?.slice(0, 4) || r.endDate?.slice(0, 4)) &&
@@ -212,29 +213,39 @@ export default function WorkPage() {
                       </p>
                     )}
 
-                    <p className="text-sm leading-relaxed text-muted mb-4">
+                    <p className="hidden sm:block text-sm leading-relaxed text-muted mb-4">
                       {r.summary || "(요약 없음)"}
                     </p>
 
-                    <div className="flex items-center justify-between gap-3">
-                      <ul className="flex flex-wrap gap-1.5">
-                        {r.tags.map((t) => (
-                          <li key={t} className="rounded-full bg-background border border-border px-2 py-0.5 text-[10px] font-mono">
+                    <div className="flex items-center justify-between gap-2">
+                      <ul className="flex flex-wrap gap-1">
+                        {r.tags.slice(0, 2).map((t) => (
+                          <li key={t} className="rounded-full bg-background border border-border px-1.5 py-0.5 text-[9px] sm:text-[10px] font-mono">
+                            {t}
+                          </li>
+                        ))}
+                        {r.tags.length > 2 && (
+                          <li className="sm:hidden rounded-full bg-background border border-border px-1.5 py-0.5 text-[9px] font-mono text-muted">
+                            +{r.tags.length - 2}
+                          </li>
+                        )}
+                        {r.tags.slice(2).map((t) => (
+                          <li key={t} className="hidden sm:list-item rounded-full bg-background border border-border px-2 py-0.5 text-[10px] font-mono">
                             {t}
                           </li>
                         ))}
                       </ul>
-                      <span className="font-mono text-xs text-muted group-hover:text-foreground transition">→</span>
+                      <span className="font-mono text-xs text-muted group-hover:text-foreground transition shrink-0">→</span>
                     </div>
                   </div>
                 </Link>
 
                 {/* Admin edit/delete */}
                 {admin && (
-                  <div className="absolute bottom-4 right-4 flex gap-1.5">
+                  <div className="absolute bottom-2 right-2 sm:bottom-4 sm:right-4 flex gap-1">
                     <Link
                       href={`/work/edit?slug=${r.slug}`}
-                      className="rounded-md border border-border bg-card w-7 h-7 flex items-center justify-center text-xs hover:border-foreground transition"
+                      className="rounded-md border border-border bg-card w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-xs hover:border-foreground transition"
                       aria-label="edit"
                       onClick={(e) => e.stopPropagation()}
                     >
@@ -243,7 +254,7 @@ export default function WorkPage() {
                     <button
                       type="button"
                       onClick={(e) => { e.preventDefault(); onDelete(r.slug, r.isDraft); }}
-                      className="rounded-md border border-red-500/40 bg-card w-7 h-7 flex items-center justify-center text-sm text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 transition"
+                      className="rounded-md border border-red-500/40 bg-card w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center text-sm text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 transition"
                       aria-label="delete"
                     >
                       ×

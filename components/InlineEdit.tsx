@@ -38,17 +38,17 @@ export default function InlineEdit({ value, onSave, multiline = false, className
       value: val,
       onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
         setVal(e.target.value),
-      onBlur: save,
       onKeyDown: (e: React.KeyboardEvent) => {
-        if (e.key === "Escape") cancel();
+        if (e.key === "Escape") { e.preventDefault(); cancel(); }
         if (!multiline && e.key === "Enter") { e.preventDefault(); save(); }
+        if (multiline && e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); save(); }
       },
-      className: `bg-card border border-accent rounded px-2 py-1 outline-none resize-none w-full text-foreground`,
+      className: `bg-card border border-accent rounded px-2 py-1 outline-none resize-y w-full text-foreground`,
     };
     return multiline ? (
-      <textarea ref={taRef} rows={3} {...shared} />
+      <textarea ref={taRef} rows={Math.max(4, val.split("\n").length + 1)} onBlur={save} {...shared} />
     ) : (
-      <input ref={inputRef} {...shared} />
+      <input ref={inputRef} onBlur={save} {...shared} />
     );
   }
 
@@ -56,8 +56,8 @@ export default function InlineEdit({ value, onSave, multiline = false, className
     <span
       role="button"
       tabIndex={0}
-      className={`group/ie relative inline-block cursor-text outline-none ${className}`}
-      onClick={() => setEditing(true)}
+      className={`group/ie relative cursor-text outline-none ${multiline ? "block whitespace-pre-wrap" : "inline-block"} ${className}`}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setEditing(true); }}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setEditing(true); }}
       title="클릭하여 편집"
     >

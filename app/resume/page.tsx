@@ -87,7 +87,7 @@ export default function ResumePage() {
                 <p className="text-sm text-muted">
                   {admin ? <InlineEdit value={it.company} onSave={upd("company")} /> : it.company}
                 </p>
-                <p className="mt-2 text-sm leading-relaxed text-muted">
+                <p className="mt-2 text-sm leading-relaxed text-muted whitespace-pre-wrap">
                   {admin ? <InlineEdit value={it.desc} onSave={upd("desc")} multiline /> : it.desc}
                 </p>
               </div>

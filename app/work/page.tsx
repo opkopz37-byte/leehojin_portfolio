@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import PageHeader from "@/components/PageHeader";
 import { deleteDraft } from "@/lib/draftStorage";
 import { deleteRemotePost } from "@/lib/githubStorage";
@@ -11,6 +11,7 @@ import { useAdmin } from "@/hooks/useAdmin";
 
 const MAIN_FILTERS = ["All", "Project", "Personal"] as const;
 type MainFilter = (typeof MAIN_FILTERS)[number];
+const DELETED_KEY = "portfolio.work.deleted";
 
 type Row = Project & {
   isDraft: boolean;
@@ -22,13 +23,21 @@ type Row = Project & {
 export default function WorkPage() {
   const [main, setMain] = useState<MainFilter>("All");
   const [sub, setSub] = useState<SubCategory | "All">("All");
+  const [deletedSlugs, setDeletedSlugs] = useState<Set<string>>(new Set());
   const admin = useAdmin();
   const drafts = useDrafts();
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DELETED_KEY);
+      if (raw) setDeletedSlugs(new Set(JSON.parse(raw)));
+    } catch {}
+  }, []);
 
   const rows: Row[] = useMemo(() => {
     const draftSlugs = new Set(drafts.map((d) => d.slug));
     const published: Row[] = projects
-      .filter((p) => !draftSlugs.has(p.slug))
+      .filter((p) => !draftSlugs.has(p.slug) && !deletedSlugs.has(p.slug))
       .map((p) => ({ ...p, isDraft: false, overrides: false, uploaded: false, href: `/work/${p.slug}` }));
     const draftRows: Row[] = drafts.map((d) => {
       const { updatedAt: _u, overrides = false, uploaded = false, ...rest } = d;
@@ -41,7 +50,7 @@ export default function WorkPage() {
       };
     });
     return [...draftRows, ...published];
-  }, [drafts]);
+  }, [drafts, deletedSlugs]);
 
   const visible = useMemo(() => {
     return rows.filter((r) => {
@@ -53,14 +62,15 @@ export default function WorkPage() {
 
   const onDelete = useCallback(async (slug: string, isDraft: boolean) => {
     if (!confirm("이 글을 삭제할까요?")) return;
-    if (isDraft) deleteDraft(slug);
-    try {
-      await deleteRemotePost(slug);
-    } catch {
-      // best-effort
+    if (isDraft) {
+      deleteDraft(slug);
     }
-    window.location.reload();
-  }, []);
+    const next = new Set(deletedSlugs);
+    next.add(slug);
+    try { localStorage.setItem(DELETED_KEY, JSON.stringify([...next])); } catch {}
+    setDeletedSlugs(next);
+    deleteRemotePost(slug).catch(() => {});
+  }, [deletedSlugs]);
 
   return (
     <>

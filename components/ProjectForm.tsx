@@ -681,7 +681,7 @@ export default function ProjectForm({
             <button
               type="button"
               onClick={onDelete}
-              className="ml-auto inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-xs font-mono text-muted hover:border-foreground hover:text-foreground transition"
+              className="ml-auto inline-flex items-center gap-2 rounded-full border border-red-500/40 px-4 py-2 text-xs font-mono text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 transition"
             >
               삭제
             </button>

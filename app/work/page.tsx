@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import PageHeader from "@/components/PageHeader";
 import { deleteDraft } from "@/lib/draftStorage";
 import { deleteRemotePost } from "@/lib/githubStorage";
@@ -51,11 +51,16 @@ export default function WorkPage() {
     });
   }, [rows, main, sub]);
 
-  function onDeleteDraft(slug: string) {
+  const onDelete = useCallback(async (slug: string, isDraft: boolean) => {
     if (!confirm("이 글을 삭제할까요?")) return;
-    deleteDraft(slug);
-    deleteRemotePost(slug).catch(() => {});
-  }
+    if (isDraft) deleteDraft(slug);
+    try {
+      await deleteRemotePost(slug);
+    } catch {
+      // best-effort
+    }
+    window.location.reload();
+  }, []);
 
   return (
     <>
@@ -214,27 +219,25 @@ export default function WorkPage() {
                   </div>
                 </Link>
 
-                {/* Admin edit/delete — show on ALL posts */}
+                {/* Admin edit/delete */}
                 {admin && (
                   <div className="absolute bottom-4 right-4 flex gap-1.5">
                     <Link
                       href={`/work/edit?slug=${r.slug}`}
-                      className="rounded-md border border-border bg-card w-7 h-7 flex items-center justify-center text-xs hover:border-foreground hover:bg-card transition"
+                      className="rounded-md border border-border bg-card w-7 h-7 flex items-center justify-center text-xs hover:border-foreground transition"
                       aria-label="edit"
                       onClick={(e) => e.stopPropagation()}
                     >
                       ✎
                     </Link>
-                    {r.isDraft && (
-                      <button
-                        type="button"
-                        onClick={(e) => { e.preventDefault(); onDeleteDraft(r.slug); }}
-                        className="rounded-md border border-border bg-card w-7 h-7 flex items-center justify-center text-sm hover:border-foreground transition"
-                        aria-label="delete"
-                      >
-                        ×
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); onDelete(r.slug, r.isDraft); }}
+                      className="rounded-md border border-red-500/40 bg-card w-7 h-7 flex items-center justify-center text-sm text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 transition"
+                      aria-label="delete"
+                    >
+                      ×
+                    </button>
                   </div>
                 )}
               </li>

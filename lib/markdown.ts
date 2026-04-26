@@ -8,10 +8,6 @@ marked.setOptions({
 const URL_RE =
   /(^|[\s(])((?:https?:\/\/|www\.)[^\s<>"'`)]+)/g;
 
-/**
- * Wrap bare URLs in <a> tags, while skipping anything inside
- * <a>, <code>, or <pre> elements.
- */
 function autolinkHtml(html: string): string {
   let out = "";
   let i = 0;
@@ -55,7 +51,35 @@ function autolinkHtml(html: string): string {
   return out;
 }
 
+function youtubeId(url: string): string | null {
+  const m = url.match(/(?:youtube\.com\/watch\?(?:[^&]*&)*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+function vimeoId(url: string): string | null {
+  const m = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  return m ? m[1] : null;
+}
+
+const RESPONSIVE = "position:relative;padding-bottom:56.25%;height:0;overflow:hidden;margin:1.5rem 0;border-radius:8px;";
+const IFRAME_STYLE = "position:absolute;top:0;left:0;width:100%;height:100%;border:0;";
+
+function embedVideoUrls(source: string): string {
+  return source.replace(/^[ \t]*(https?:\/\/[^\s]+)[ \t]*$/gm, (line, url: string) => {
+    const yt = youtubeId(url);
+    if (yt) {
+      return `<div style="${RESPONSIVE}"><iframe style="${IFRAME_STYLE}" src="https://www.youtube.com/embed/${yt}" allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe></div>`;
+    }
+    const vm = vimeoId(url);
+    if (vm) {
+      return `<div style="${RESPONSIVE}"><iframe style="${IFRAME_STYLE}" src="https://player.vimeo.com/video/${vm}" allowfullscreen></iframe></div>`;
+    }
+    return line;
+  });
+}
+
 export function renderMarkdown(source: string): string {
-  const html = marked.parse(source ?? "", { async: false }) as string;
+  const preprocessed = embedVideoUrls(source ?? "");
+  const html = marked.parse(preprocessed, { async: false }) as string;
   return autolinkHtml(html);
 }

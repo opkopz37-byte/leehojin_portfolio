@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
+import React, {
   useEffect,
   useMemo,
   useRef,
@@ -135,6 +135,7 @@ export default function ProjectForm({
   const [pushStatus, setPushStatus] = useState<"idle" | "success" | "error">("idle");
   const [pushError, setPushError] = useState<string | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
+  const [pendingImages, setPendingImages] = useState<Array<{ url: string; filename: string }>>([]);
 
   useEffect(() => {
     if (slugDirty) return;
@@ -255,6 +256,7 @@ export default function ProjectForm({
   async function handleFiles(files: FileList | File[], switchToPreview = false) {
     const list = Array.from(files);
     let inserted = false;
+    const collectedImages: Array<{ url: string; filename: string }> = [];
     for (const file of list) {
       if (file.size > MAX_FILE_BYTES) {
         alert(
@@ -290,7 +292,7 @@ export default function ProjectForm({
           } finally {
             setImageUploading(false);
           }
-          insertSnippet(`![${file.name}](${url})`);
+          collectedImages.push({ url, filename: file.name });
           inserted = true;
         } else {
           alert(`${file.name}: 이미지/영상만 지원합니다.`);
@@ -300,7 +302,14 @@ export default function ProjectForm({
         alert(`${file.name} 읽기 실패`);
       }
     }
-    if (inserted && switchToPreview) setBodyTab("preview");
+    if (collectedImages.length === 1) {
+      setPendingImages(collectedImages);
+    } else {
+      for (const img of collectedImages) {
+        insertSnippet(`<img src="${img.url}" alt="${img.filename}" style="display:block;margin:0 auto;width:100%;max-width:100%;" />`);
+      }
+      if (inserted && switchToPreview) setBodyTab("preview");
+    }
   }
 
   function onPaste(e: ClipboardEvent<HTMLTextAreaElement>) {
@@ -347,6 +356,26 @@ export default function ProjectForm({
           issues={warning.issues}
           onCancel={() => setWarning(null)}
           onForce={onForceUpload}
+        />
+      )}
+
+      {pendingImages.length > 0 && (
+        <ImageOptionsModal
+          src={pendingImages[0].url}
+          filename={pendingImages[0].filename}
+          onInsert={(html) => {
+            insertSnippet(html);
+            setPendingImages((q) => {
+              const next = q.slice(1);
+              if (next.length === 0) setBodyTab("preview");
+              return next;
+            });
+          }}
+          onCancel={() => {
+            const img = pendingImages[0];
+            insertSnippet(`![${img.filename}](${img.url})`);
+            setPendingImages((q) => q.slice(1));
+          }}
         />
       )}
 
@@ -812,6 +841,98 @@ function DateSelect({
           clear
         </button>
       )}
+    </div>
+  );
+}
+
+function ImageOptionsModal({
+  src,
+  filename,
+  onInsert,
+  onCancel,
+}: {
+  src: string;
+  filename: string;
+  onInsert: (html: string) => void;
+  onCancel: () => void;
+}) {
+  const [size, setSize] = React.useState<25 | 50 | 75 | 100>(100);
+  const [align, setAlign] = React.useState<"left" | "center" | "right">("center");
+
+  function buildHtml() {
+    if (align === "center") {
+      return `<img src="${src}" alt="${filename}" style="display:block;margin:0 auto;width:${size}%;max-width:100%;" />`;
+    }
+    const margin = align === "left" ? "0 1.5rem 1rem 0" : "0 0 1rem 1.5rem";
+    return `<img src="${src}" alt="${filename}" style="float:${align};margin:${margin};width:${size}%;max-width:${size}%;" />`;
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
+      onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="bg-card border border-border rounded-2xl max-w-sm w-full p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-sm font-semibold mb-4">이미지 삽입 옵션</h3>
+
+        <div className="mb-4 rounded-lg border border-border overflow-hidden bg-background flex items-center justify-center h-28">
+          <img src={src} alt={filename} className="max-h-full max-w-full object-contain" />
+        </div>
+
+        <p className="font-mono text-[10px] uppercase tracking-wider text-muted mb-2">크기</p>
+        <div className="flex gap-2 mb-4">
+          {([25, 50, 75, 100] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setSize(s)}
+              className={`flex-1 rounded-md border py-1.5 text-xs font-mono transition ${
+                size === s ? "bg-foreground text-background border-foreground" : "border-border hover:border-foreground"
+              }`}
+            >
+              {s}%
+            </button>
+          ))}
+        </div>
+
+        <p className="font-mono text-[10px] uppercase tracking-wider text-muted mb-2">정렬</p>
+        <div className="flex gap-2 mb-6">
+          {(["left", "center", "right"] as const).map((a) => (
+            <button
+              key={a}
+              type="button"
+              onClick={() => setAlign(a)}
+              className={`flex-1 rounded-md border py-1.5 text-xs transition ${
+                align === a ? "bg-foreground text-background border-foreground" : "border-border hover:border-foreground"
+              }`}
+            >
+              {a === "left" ? "왼쪽" : a === "center" ? "가운데" : "오른쪽"}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-full border border-border px-4 py-2 text-sm hover:border-foreground transition"
+          >
+            기본 삽입
+          </button>
+          <button
+            type="button"
+            onClick={() => onInsert(buildHtml())}
+            className="rounded-full bg-foreground text-background px-5 py-2 text-sm font-medium hover:opacity-90 transition"
+          >
+            삽입
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

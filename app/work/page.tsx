@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState, useCallback, useEffect } from "react";
 import PageHeader from "@/components/PageHeader";
-import { deleteDraft } from "@/lib/draftStorage";
+import { deleteDraft, markDeleted, DELETED_SLUGS_KEY } from "@/lib/draftStorage";
 import { deleteRemotePost } from "@/lib/githubStorage";
 import { projects, SUB_CATEGORIES, type SubCategory, type Project } from "@/lib/projects";
 import { useDrafts } from "@/lib/useDrafts";
@@ -11,7 +11,6 @@ import { useAdmin } from "@/hooks/useAdmin";
 
 const MAIN_FILTERS = ["All", "Project", "Personal"] as const;
 type MainFilter = (typeof MAIN_FILTERS)[number];
-const DELETED_KEY = "portfolio.work.deleted";
 
 type Row = Project & {
   isDraft: boolean;
@@ -20,23 +19,43 @@ type Row = Project & {
   href: string;
 };
 
+function mergeProjects(fresh: Project[], staticList: Project[]): Project[] {
+  const freshSlugs = new Set(fresh.map((p) => p.slug));
+  return [...fresh, ...staticList.filter((p) => !freshSlugs.has(p.slug))];
+}
+
 export default function WorkPage() {
   const [main, setMain] = useState<MainFilter>("All");
   const [sub, setSub] = useState<SubCategory | "All">("All");
   const [deletedSlugs, setDeletedSlugs] = useState<Set<string>>(new Set());
+  const [freshProjects, setFreshProjects] = useState<Project[] | null>(null);
   const admin = useAdmin();
   const drafts = useDrafts();
 
+  // Load deletedSlugs from localStorage
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(DELETED_KEY);
+      const raw = localStorage.getItem(DELETED_SLUGS_KEY);
       if (raw) setDeletedSlugs(new Set(JSON.parse(raw)));
     } catch {}
   }, []);
 
+  // In dev mode, always fetch fresh posts from the file on mount
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return;
+    fetch("/api/local/posts")
+      .then((r) => r.json())
+      .then((data: Project[]) => setFreshProjects(data))
+      .catch(() => {});
+  }, []);
+
+  const baseProjects = freshProjects !== null
+    ? mergeProjects(freshProjects, projects)
+    : projects;
+
   const rows: Row[] = useMemo(() => {
     const draftSlugs = new Set(drafts.map((d) => d.slug));
-    const published: Row[] = projects
+    const published: Row[] = baseProjects
       .filter((p) => !draftSlugs.has(p.slug) && !deletedSlugs.has(p.slug))
       .map((p) => ({ ...p, isDraft: false, overrides: false, uploaded: false, href: `/work/${p.slug}` }));
     const draftRows: Row[] = drafts.map((d) => {
@@ -50,7 +69,7 @@ export default function WorkPage() {
       };
     });
     return [...draftRows, ...published];
-  }, [drafts, deletedSlugs]);
+  }, [drafts, deletedSlugs, baseProjects]);
 
   const visible = useMemo(() => {
     return rows.filter((r) => {
@@ -62,15 +81,18 @@ export default function WorkPage() {
 
   const onDelete = useCallback(async (slug: string, isDraft: boolean) => {
     if (!confirm("이 글을 삭제할까요?")) return;
-    if (isDraft) {
-      deleteDraft(slug);
-    }
-    const next = new Set(deletedSlugs);
-    next.add(slug);
-    try { localStorage.setItem(DELETED_KEY, JSON.stringify([...next])); } catch {}
-    setDeletedSlugs(next);
+    deleteDraft(slug);
+    markDeleted(slug);
+    setDeletedSlugs((prev) => new Set([...prev, slug]));
     deleteRemotePost(slug).catch(() => {});
-  }, [deletedSlugs]);
+    // Refetch fresh data after delete
+    if (process.env.NODE_ENV === "development") {
+      fetch("/api/local/posts")
+        .then((r) => r.json())
+        .then((data: Project[]) => setFreshProjects(data))
+        .catch(() => {});
+    }
+  }, []);
 
   return (
     <>

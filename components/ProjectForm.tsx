@@ -11,7 +11,7 @@ import React, {
   type DragEvent,
 } from "react";
 import MarkdownView from "@/components/MarkdownView";
-import { deleteDraft, saveDraft } from "@/lib/draftStorage";
+import { deleteDraft, saveDraft, markDeleted } from "@/lib/draftStorage";
 import { upsertRemotePost, deleteRemotePost, uploadImage } from "@/lib/githubStorage";
 import { SUB_CATEGORIES, type Project, type SubCategory } from "@/lib/projects";
 
@@ -215,6 +215,8 @@ export default function ProjectForm({
     const result = persist({ uploaded: true });
     if (!result) return;
     await pushToGitHub(project);
+    // Clear draft — fresh data is now in posts.json and will be fetched by work page
+    deleteDraft(result.slug);
     router.push("/work");
   }
 
@@ -222,6 +224,7 @@ export default function ProjectForm({
     const result = persist({ uploaded: true });
     if (!result) return;
     await pushToGitHub(project);
+    deleteDraft(result.slug);
     router.push("/work");
   }
 
@@ -229,6 +232,7 @@ export default function ProjectForm({
     if (!originalSlug) return;
     if (!confirm("이 글을 삭제할까요?")) return;
     deleteDraft(originalSlug);
+    markDeleted(originalSlug);
     deleteRemotePost(originalSlug).catch(() => {});
     router.push("/work");
   }

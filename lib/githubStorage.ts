@@ -24,13 +24,13 @@ export async function deleteRemotePost(slug: string): Promise<void> {
   }
 }
 
-export async function uploadImage(filename: string, dataUrl: string): Promise<string> {
+export async function uploadImage(filename: string, dataUrl: string, type = "image/"): Promise<string> {
   const base64 = dataUrl.split(",")[1];
   if (!base64) throw new Error("이미지 데이터 형식이 잘못되었습니다.");
   const res = await fetch("/api/local/upload-image", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ filename, base64 }),
+    body: JSON.stringify({ filename, base64, type }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({})) as { error?: string };

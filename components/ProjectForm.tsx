@@ -268,7 +268,16 @@ export default function ProjectForm({
         const isImage = file.type.startsWith("image/");
         if (isVideo) {
           const dataUrl = await readAsDataUrl(file);
-          insertSnippet(`<video src="${dataUrl}" controls playsinline></video>`);
+          let url = dataUrl;
+          setImageUploading(true);
+          try {
+            url = await uploadImage(file.name, dataUrl, file.type);
+          } catch (err) {
+            console.error(err);
+          } finally {
+            setImageUploading(false);
+          }
+          insertSnippet(`<video src="${url}" controls playsinline></video>`);
           inserted = true;
         } else if (isImage) {
           const dataUrl = await readAsDataUrl(file);

@@ -12,7 +12,7 @@ import {
 } from "react";
 import MarkdownView from "@/components/MarkdownView";
 import { deleteDraft, saveDraft } from "@/lib/draftStorage";
-import { upsertRemotePost, deleteRemotePost, isGithubConfigured, uploadImage } from "@/lib/githubStorage";
+import { upsertRemotePost, deleteRemotePost, uploadImage } from "@/lib/githubStorage";
 import { SUB_CATEGORIES, type Project, type SubCategory } from "@/lib/projects";
 
 type FormState = {
@@ -188,7 +188,6 @@ export default function ProjectForm({
   }
 
   async function pushToGitHub(p: Project) {
-    if (!isGithubConfigured()) return;
     setPushing(true);
     setPushStatus("idle");
     setPushError(null);
@@ -274,16 +273,13 @@ export default function ProjectForm({
         } else if (isImage) {
           const dataUrl = await readAsDataUrl(file);
           let url = dataUrl;
-          if (isGithubConfigured()) {
-            setImageUploading(true);
-            try {
-              url = await uploadImage(file.name, dataUrl);
-            } catch (err) {
-              console.error(err);
-              alert(`이미지 GitHub 업로드 실패: ${err instanceof Error ? err.message : "오류"}. 로컬 base64로 대체합니다.`);
-            } finally {
-              setImageUploading(false);
-            }
+          setImageUploading(true);
+          try {
+            url = await uploadImage(file.name, dataUrl);
+          } catch (err) {
+            console.error(err);
+          } finally {
+            setImageUploading(false);
           }
           insertSnippet(`![${file.name}](${url})`);
           inserted = true;
@@ -433,20 +429,15 @@ export default function ProjectForm({
               }
               try {
                 const dataUrl = await readAsDataUrl(file);
-                if (isGithubConfigured()) {
-                  setImageUploading(true);
-                  try {
-                    const url = await uploadImage(file.name, dataUrl);
-                    set("coverImage", url);
-                  } catch (err) {
-                    console.error(err);
-                    alert(`이미지 GitHub 업로드 실패: ${err instanceof Error ? err.message : "오류"}. 로컬 base64로 대체합니다.`);
-                    set("coverImage", dataUrl);
-                  } finally {
-                    setImageUploading(false);
-                  }
-                } else {
+                setImageUploading(true);
+                try {
+                  const url = await uploadImage(file.name, dataUrl);
+                  set("coverImage", url);
+                } catch (err) {
+                  console.error(err);
                   set("coverImage", dataUrl);
+                } finally {
+                  setImageUploading(false);
                 }
               } catch {
                 alert("이미지 읽기 실패");
@@ -635,7 +626,7 @@ export default function ProjectForm({
         )}
         {pushStatus === "success" && (
           <p className="mt-3 font-mono text-xs text-green-600 dark:text-green-400">
-            ✓ GitHub에 저장됨 — 약 1~2분 후 배포가 자동 완료됩니다.
+            ✓ 파일에 저장됨 — git push 하면 배포됩니다.
           </p>
         )}
         {pushStatus === "error" && pushError && (
@@ -643,7 +634,7 @@ export default function ProjectForm({
         )}
 
         <p className="mt-4 font-mono text-[11px] text-muted">
-          업로드 시 GitHub 저장소에 자동 커밋되어 영구 저장됩니다.
+          업로드 시 로컬 파일에 저장됩니다. git push 하면 배포됩니다.
         </p>
       </div>
     </div>

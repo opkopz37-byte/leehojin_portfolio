@@ -202,7 +202,7 @@ export default function ProjectForm({
     }
   }
 
-  function onUpload() {
+  async function onUpload() {
     const issues = collectIssues();
     if (issues.length > 0) {
       setWarning({ issues });
@@ -210,15 +210,15 @@ export default function ProjectForm({
     }
     const result = persist({ uploaded: true });
     if (!result) return;
-    pushToGitHub(project);
-    if (mode === "new") router.replace(`/work/edit?slug=${result.slug}`);
+    await pushToGitHub(project);
+    router.push("/work");
   }
 
-  function onForceUpload() {
+  async function onForceUpload() {
     const result = persist({ uploaded: true });
     if (!result) return;
-    pushToGitHub(project);
-    if (mode === "new") router.replace(`/work/edit?slug=${result.slug}`);
+    await pushToGitHub(project);
+    router.push("/work");
   }
 
   function onDelete() {

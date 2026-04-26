@@ -96,6 +96,13 @@ export default function ProjectDetail({
       <section className="border-t border-border px-6 py-12 sm:py-16">
         <div className="mx-auto max-w-5xl">
           <h2 className="font-mono text-xs text-muted mb-6">MEDIA</h2>
+          {project.videoLinks && project.videoLinks.length > 0 && (
+            <div className="space-y-6 mb-8">
+              {project.videoLinks.filter(Boolean).map((url) => (
+                <VideoEmbed key={url} url={url} />
+              ))}
+            </div>
+          )}
           <MediaGallery items={project.media} />
         </div>
       </section>
@@ -129,5 +136,34 @@ export default function ProjectDetail({
         </section>
       )}
     </article>
+  );
+}
+
+function VideoEmbed({ url }: { url: string }) {
+  function youtubeId(u: string) {
+    const m = u.match(/(?:youtube\.com\/watch\?(?:[^&]*&)*v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+    return m?.[1] ?? null;
+  }
+  function vimeoId(u: string) {
+    const m = u.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+    return m?.[1] ?? null;
+  }
+  const yt = youtubeId(url);
+  const vm = vimeoId(url);
+  const src = yt
+    ? `https://www.youtube.com/embed/${yt}`
+    : vm
+    ? `https://player.vimeo.com/video/${vm}`
+    : null;
+  if (!src) return null;
+  return (
+    <div className="relative w-full overflow-hidden rounded-xl" style={{ paddingBottom: "56.25%" }}>
+      <iframe
+        src={src}
+        className="absolute inset-0 w-full h-full border-0"
+        allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture"
+        allowFullScreen
+      />
+    </div>
   );
 }

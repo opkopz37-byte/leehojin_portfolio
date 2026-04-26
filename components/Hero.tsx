@@ -115,19 +115,37 @@ export default function Hero() {
       </div>
 
       {slideImages.length > 1 && (
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-2">
-          {slideImages.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              aria-label={`Slide ${i + 1}`}
-              onClick={() => setIdx(i)}
-              className={`rounded-full transition-all duration-300 ${
-                i === idx ? "w-5 h-1.5 bg-foreground" : "w-1.5 h-1.5 bg-foreground/30"
-              }`}
-            />
-          ))}
-        </div>
+        <>
+          <button
+            type="button"
+            aria-label="이전 슬라이드"
+            onClick={() => setIdx((i) => (i - 1 + slideImages.length) % slideImages.length)}
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full border border-white/20 bg-black/20 text-white hover:bg-black/40 transition backdrop-blur-sm"
+          >
+            ←
+          </button>
+          <button
+            type="button"
+            aria-label="다음 슬라이드"
+            onClick={() => setIdx((i) => (i + 1) % slideImages.length)}
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full border border-white/20 bg-black/20 text-white hover:bg-black/40 transition backdrop-blur-sm"
+          >
+            →
+          </button>
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-2">
+            {slideImages.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                aria-label={`Slide ${i + 1}`}
+                onClick={() => setIdx(i)}
+                className={`rounded-full transition-all duration-300 ${
+                  i === idx ? "w-5 h-1.5 bg-foreground" : "w-1.5 h-1.5 bg-foreground/30"
+                }`}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       <a

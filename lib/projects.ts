@@ -42,6 +42,8 @@ export type Project = {
   blocks?: Block[];
   media: MediaItem[];
   links?: { label: string; href: string }[];
+  /** YouTube / Vimeo URLs shown as embedded players at the top of the post. */
+  videoLinks?: string[];
 };
 
 const _remotePosts = postsJson as unknown as Project[];

@@ -4,6 +4,7 @@ import "./globals.css";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import AdminBar from "@/components/AdminBar";
+import ScrollButtons from "@/components/ScrollButtons";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { siteConfig } from "@/lib/config";
 
@@ -52,6 +53,7 @@ export default function RootLayout({
           <main>{children}</main>
           <Footer />
           <AdminBar />
+          <ScrollButtons />
         </ThemeProvider>
       </body>
     </html>

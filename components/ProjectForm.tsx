@@ -28,6 +28,7 @@ type FormState = {
   summary: string;
   coverImage: string;
   body: string;
+  videoLinks: string[];
 };
 
 const empty: FormState = {
@@ -43,6 +44,7 @@ const empty: FormState = {
   summary: "",
   coverImage: "",
   body: "",
+  videoLinks: [],
 };
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -81,6 +83,7 @@ function toFormState(p: Partial<Project> | undefined): FormState {
     summary: p.summary ?? "",
     coverImage: p.coverImage ?? "",
     body: p.body ?? "",
+    videoLinks: p.videoLinks ?? [],
   };
 }
 
@@ -103,6 +106,7 @@ function toProject(s: FormState): Project {
     coverImage: s.coverImage || undefined,
     body: s.body,
     media: [],
+    videoLinks: s.videoLinks.filter(Boolean),
   };
 }
 
@@ -483,6 +487,46 @@ export default function ProjectForm({
               e.target.value = "";
             }}
           />
+        </section>
+
+        {/* Video Links */}
+        <section className="mt-10 border-t border-border pt-8">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <h2 className="font-mono text-xs text-muted">메인 영상 (YouTube / Vimeo)</h2>
+            <button
+              type="button"
+              onClick={() => set("videoLinks", [...s.videoLinks, ""])}
+              className="font-mono text-[11px] text-accent hover:text-foreground transition"
+            >
+              + 항목 추가
+            </button>
+          </div>
+          {s.videoLinks.length === 0 && (
+            <p className="text-xs text-muted/60 font-mono">링크를 추가하면 게시물 상단에 순서대로 임베드됩니다.</p>
+          )}
+          <div className="space-y-2">
+            {s.videoLinks.map((url, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  value={url}
+                  onChange={(e) => {
+                    const next = [...s.videoLinks];
+                    next[i] = e.target.value;
+                    set("videoLinks", next);
+                  }}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  className="flex-1 rounded-md border border-border bg-card px-3 py-2 text-sm font-mono outline-none focus:border-foreground"
+                />
+                <button
+                  type="button"
+                  onClick={() => set("videoLinks", s.videoLinks.filter((_, j) => j !== i))}
+                  className="w-7 h-7 flex items-center justify-center rounded-md border border-border text-muted hover:border-foreground hover:text-foreground transition text-sm"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* META fields — always visible */}

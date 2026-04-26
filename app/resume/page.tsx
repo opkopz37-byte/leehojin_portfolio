@@ -20,9 +20,19 @@ const defaultAwards: Entry[] = [
   { role: "Best Technical Demo", company: "KGC — Korea Game Conference", period: "2023", desc: "실시간 GI 프로토타입 데모로 기술 부문 수상." },
 ];
 
+const defaultMilitary: Entry[] = [
+  { role: "병장 만기 전역", company: "대한민국 육군", period: "2014 — 2016", desc: "" },
+];
+
+const defaultTraining: Entry[] = [
+  { role: "교육 이수 예시", company: "기관명", period: "2023", desc: "이수 내용 설명." },
+];
+
 const EXP_KEY = "portfolio.resume.experience";
 const EDU_KEY = "portfolio.resume.education";
 const AWARDS_KEY = "portfolio.resume.awards";
+const MILITARY_KEY = "portfolio.resume.military";
+const TRAINING_KEY = "portfolio.resume.training";
 
 function load(key: string, def: Entry[]) {
   if (typeof window === "undefined") return def;
@@ -34,18 +44,24 @@ export default function ResumePage() {
   const [exp, setExp] = useState(defaultExperience);
   const [edu, setEdu] = useState(defaultEducation);
   const [awards, setAwards] = useState(defaultAwards);
+  const [military, setMilitary] = useState(defaultMilitary);
+  const [training, setTraining] = useState(defaultTraining);
   const [hydrated, setHydrated] = useState(false);
 
   if (!hydrated && typeof window !== "undefined") {
     setExp(load(EXP_KEY, defaultExperience));
     setEdu(load(EDU_KEY, defaultEducation));
     setAwards(load(AWARDS_KEY, defaultAwards));
+    setMilitary(load(MILITARY_KEY, defaultMilitary));
+    setTraining(load(TRAINING_KEY, defaultTraining));
     setHydrated(true);
   }
 
   function saveExp(v: Entry[]) { setExp(v); localStorage.setItem(EXP_KEY, JSON.stringify(v)); }
   function saveEdu(v: Entry[]) { setEdu(v); localStorage.setItem(EDU_KEY, JSON.stringify(v)); }
   function saveAwards(v: Entry[]) { setAwards(v); localStorage.setItem(AWARDS_KEY, JSON.stringify(v)); }
+  function saveMilitary(v: Entry[]) { setMilitary(v); localStorage.setItem(MILITARY_KEY, JSON.stringify(v)); }
+  function saveTraining(v: Entry[]) { setTraining(v); localStorage.setItem(TRAINING_KEY, JSON.stringify(v)); }
 
   function makeUpdater(list: Entry[], save: (v: Entry[]) => void, i: number) {
     return (field: keyof Entry) => (val: string) => {
@@ -119,6 +135,14 @@ export default function ResumePage() {
           <div>
             <h2 className="font-mono text-xs text-muted mb-6">AWARDS</h2>
             <EntryBlock items={awards} save={saveAwards} />
+          </div>
+          <div>
+            <h2 className="font-mono text-xs text-muted mb-6">MILITARY SERVICE</h2>
+            <EntryBlock items={military} save={saveMilitary} />
+          </div>
+          <div>
+            <h2 className="font-mono text-xs text-muted mb-6">TRAINING & CERTIFICATES</h2>
+            <EntryBlock items={training} save={saveTraining} />
           </div>
         </div>
       </section>

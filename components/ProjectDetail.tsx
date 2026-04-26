@@ -93,19 +93,25 @@ export default function ProjectDetail({
         </div>
       </header>
 
-      <section className="border-t border-border px-6 py-12 sm:py-16">
-        <div className="mx-auto max-w-5xl">
-          <h2 className="font-mono text-xs text-muted mb-6">MEDIA</h2>
-          {project.videoLinks && project.videoLinks.length > 0 && (
-            <div className="space-y-6 mb-8">
-              {project.videoLinks.filter(Boolean).map((url) => (
-                <VideoEmbed key={url} url={url} />
-              ))}
-            </div>
-          )}
-          <MediaGallery items={project.media} />
-        </div>
-      </section>
+      {(project.videoLinks?.filter(Boolean).length || project.media.length > 0) ? (
+        <section className="border-t border-border px-6 py-12 sm:py-16">
+          <div className="mx-auto max-w-5xl">
+            {project.videoLinks && project.videoLinks.filter(Boolean).length > 0 && (
+              <div className="space-y-6 mb-8">
+                {project.videoLinks.filter(Boolean).map((url) => (
+                  <VideoEmbed key={url} url={url} />
+                ))}
+              </div>
+            )}
+            {project.media.length > 0 && (
+              <>
+                <h2 className="font-mono text-xs text-muted mb-6">MEDIA</h2>
+                <MediaGallery items={project.media} />
+              </>
+            )}
+          </div>
+        </section>
+      ) : null}
 
       <section className="border-t border-border px-6 py-16 sm:py-24">
         <div className="mx-auto max-w-5xl grid gap-12 md:grid-cols-[180px_1fr]">

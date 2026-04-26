@@ -484,13 +484,14 @@ export default function ProjectForm({
             </select>
           </Field>
 
-          <Field label="프로젝트 이름 (slug)">
+          <Field label="URL Slug">
             <input
               value={s.slug}
               onChange={(e) => {
                 setSlugDirty(true);
-                set("slug", slugify(e.target.value));
+                set("slug", e.target.value);
               }}
+              onBlur={(e) => set("slug", slugify(e.target.value))}
               placeholder="my-project"
               className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm font-mono outline-none focus:border-foreground"
             />
@@ -759,26 +760,20 @@ function DateSelect({
   value: string;
   onChange: (v: string) => void;
 }) {
-  const [y, m, d] = value ? value.split("-") : ["", "", ""];
+  const parts = value ? value.split("-") : ["", ""];
+  const y = parts[0] ?? "";
+  const m = parts[1] ?? "";
   const thisYear = new Date().getFullYear();
   const years: string[] = [];
   for (let i = thisYear + 2; i >= thisYear - 25; i--) years.push(String(i));
   const months = Array.from({ length: 12 }, (_, i) =>
     String(i + 1).padStart(2, "0"),
   );
-  const yi = parseInt(y || "0", 10);
-  const mi = parseInt(m || "0", 10);
-  const lastDay = yi && mi ? new Date(yi, mi, 0).getDate() : 31;
-  const days = Array.from({ length: lastDay }, (_, i) =>
-    String(i + 1).padStart(2, "0"),
-  );
 
-  function emit(ny: string, nm: string, nd: string) {
-    if (!ny && !nm && !nd) return onChange("");
-    if (ny && !nm && !nd) return onChange(ny);
-    if (ny && nm && !nd) return onChange(`${ny}-${nm}`);
-    if (ny && nm && nd) return onChange(`${ny}-${nm}-${nd}`);
-    onChange("");
+  function emit(ny: string, nm: string) {
+    if (!ny) return onChange("");
+    if (ny && !nm) return onChange(ny);
+    return onChange(`${ny}-${nm}`);
   }
 
   const cls =
@@ -788,49 +783,24 @@ function DateSelect({
     <div className="flex flex-wrap items-center gap-2">
       <select
         aria-label="Year"
-        value={y || ""}
-        onChange={(e) => emit(e.target.value, m || "", d || "")}
+        value={y}
+        onChange={(e) => emit(e.target.value, m)}
         className={cls}
       >
         <option value="">년</option>
         {years.map((yy) => (
-          <option key={yy} value={yy}>
-            {yy}
-          </option>
+          <option key={yy} value={yy}>{yy}</option>
         ))}
       </select>
       <select
         aria-label="Month"
-        value={m || ""}
-        onChange={(e) => {
-          const nm = e.target.value;
-          let nd = d || "";
-          if (yi && nm && nd) {
-            const cap = new Date(yi, parseInt(nm, 10), 0).getDate();
-            if (parseInt(nd, 10) > cap) nd = String(cap).padStart(2, "0");
-          }
-          emit(y || "", nm, nd);
-        }}
+        value={m}
+        onChange={(e) => emit(y, e.target.value)}
         className={cls}
       >
         <option value="">월</option>
         {months.map((mm) => (
-          <option key={mm} value={mm}>
-            {parseInt(mm, 10)}
-          </option>
-        ))}
-      </select>
-      <select
-        aria-label="Day"
-        value={d || ""}
-        onChange={(e) => emit(y || "", m || "", e.target.value)}
-        className={cls}
-      >
-        <option value="">일</option>
-        {days.map((dd) => (
-          <option key={dd} value={dd}>
-            {parseInt(dd, 10)}
-          </option>
+          <option key={mm} value={mm}>{parseInt(mm, 10)}</option>
         ))}
       </select>
       {value && (

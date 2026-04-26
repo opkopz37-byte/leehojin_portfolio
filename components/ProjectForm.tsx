@@ -93,8 +93,7 @@ function toProject(s: FormState): Project {
     title: s.title.trim(),
     category: s.category,
     subCategory: (s.subCategory as SubCategory) || undefined,
-    company:
-      s.category === "Project" ? s.company.trim() || undefined : undefined,
+    company: s.company.trim() || undefined,
     startDate: s.startDate || undefined,
     endDate: s.endDate || undefined,
     role: s.role.trim(),
@@ -570,16 +569,14 @@ export default function ProjectForm({
             />
           </Field>
 
-          {s.category === "Project" && (
-            <Field label="Company" full>
-              <input
-                value={s.company}
-                onChange={(e) => set("company", e.target.value)}
-                placeholder="회사명"
-                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm outline-none focus:border-foreground"
-              />
-            </Field>
-          )}
+          <Field label="Company" full>
+            <input
+              value={s.company}
+              onChange={(e) => set("company", e.target.value)}
+              placeholder="회사명"
+              className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm outline-none focus:border-foreground"
+            />
+          </Field>
 
           <Field label="Project date — 시작">
             <DateSelect

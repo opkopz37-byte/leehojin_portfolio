@@ -173,9 +173,11 @@ export default function WorkPage() {
                       </div>
                     </div>
 
-                    {(r.company || r.startDate || r.endDate) && (
+                    {(r.projectName || r.subTitle || r.company || r.startDate || r.endDate) && (
                       <p className="font-mono text-[11px] text-muted mb-2">
                         {[
+                          r.projectName,
+                          r.subTitle,
                           r.company,
                           (r.startDate?.slice(0, 4) || r.endDate?.slice(0, 4)) &&
                             [r.startDate?.slice(0, 4), r.endDate?.slice(0, 4)]

@@ -42,9 +42,13 @@ export default function ProjectDetail({
 
           <div className="flex items-center gap-3 mb-3">
             <p className="font-mono text-sm text-accent">
-              {project.category}
-              {project.company ? ` · ${project.company}` : ""}
-              {projectDate ? ` · ${projectDate}` : ""}
+              {[
+                project.category,
+                project.projectName,
+                project.subTitle,
+                project.company,
+                projectDate,
+              ].filter(Boolean).join(" · ")}
             </p>
             {draftBadge && (
               <span className="rounded-full bg-accent/10 text-accent border border-accent/30 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider">
@@ -67,12 +71,28 @@ export default function ProjectDetail({
               </dt>
               <dd className="mt-1 text-sm">{project.role || "—"}</dd>
             </div>
-            {project.category === "Project" && (
+            {project.projectName && (
+              <div>
+                <dt className="font-mono text-[10px] uppercase tracking-wider text-muted">
+                  Project Name
+                </dt>
+                <dd className="mt-1 text-sm">{project.projectName}</dd>
+              </div>
+            )}
+            {project.subTitle && (
+              <div>
+                <dt className="font-mono text-[10px] uppercase tracking-wider text-muted">
+                  Sub Title
+                </dt>
+                <dd className="mt-1 text-sm">{project.subTitle}</dd>
+              </div>
+            )}
+            {project.company && (
               <div>
                 <dt className="font-mono text-[10px] uppercase tracking-wider text-muted">
                   Company
                 </dt>
-                <dd className="mt-1 text-sm">{project.company || "—"}</dd>
+                <dd className="mt-1 text-sm">{project.company}</dd>
               </div>
             )}
             <div>

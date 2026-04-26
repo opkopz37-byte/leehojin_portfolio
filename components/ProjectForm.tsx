@@ -21,6 +21,7 @@ type FormState = {
   category: Project["category"];
   subCategory: string;
   projectName: string;
+  subTitle: string;
   company: string;
   startDate: string;
   endDate: string;
@@ -38,6 +39,7 @@ const empty: FormState = {
   category: "Project",
   subCategory: "",
   projectName: "",
+  subTitle: "",
   company: "",
   startDate: "",
   endDate: "",
@@ -78,6 +80,7 @@ function toFormState(p: Partial<Project> | undefined): FormState {
     category: (p.category as Project["category"]) ?? "Project",
     subCategory: p.subCategory ?? "",
     projectName: p.projectName ?? "",
+    subTitle: p.subTitle ?? "",
     company: p.company ?? "",
     startDate: p.startDate ?? "",
     endDate: p.endDate ?? "",
@@ -97,6 +100,7 @@ function toProject(s: FormState): Project {
     category: s.category,
     subCategory: (s.subCategory as SubCategory) || undefined,
     projectName: s.projectName.trim() || undefined,
+    subTitle: s.category === "Personal" ? s.subTitle.trim() || undefined : undefined,
     company: s.category === "Project" ? s.company.trim() || undefined : undefined,
     startDate: s.startDate || undefined,
     endDate: s.endDate || undefined,
@@ -581,6 +585,17 @@ export default function ProjectForm({
               className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm outline-none focus:border-foreground"
             />
           </Field>
+
+          {s.category === "Personal" && (
+            <Field label="Sub Title" full>
+              <input
+                value={s.subTitle}
+                onChange={(e) => set("subTitle", e.target.value)}
+                placeholder="세부 작업명 (예: Water Shader R&D)"
+                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm outline-none focus:border-foreground"
+              />
+            </Field>
+          )}
 
           {s.category === "Project" && (
             <Field label="Company" full>

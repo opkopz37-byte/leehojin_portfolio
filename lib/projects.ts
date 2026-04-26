@@ -25,6 +25,7 @@ export type Project = {
   category: "Project" | "Personal";
   company?: string;
   projectName?: string;
+  subTitle?: string;
   /** ISO date string YYYY-MM-DD. Project start date. */
   startDate?: string;
   /** ISO date string YYYY-MM-DD. Project end date. */

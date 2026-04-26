@@ -1,7 +1,7 @@
 import type { Block } from "./blocks";
 import postsJson from "../public/data/posts.json";
 
-export const SUB_CATEGORIES = ["UNREAL ENGINE", "WEB"] as const;
+export const SUB_CATEGORIES = ["TECH", "LEVEL", "LIGHTING", "WEB"] as const;
 export type SubCategory = (typeof SUB_CATEGORIES)[number];
 
 export type MediaItem =

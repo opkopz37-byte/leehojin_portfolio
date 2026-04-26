@@ -20,8 +20,6 @@ type FormState = {
   title: string;
   category: Project["category"];
   subCategory: string;
-  projectName: string;
-  subTitle: string;
   company: string;
   startDate: string;
   endDate: string;
@@ -38,8 +36,6 @@ const empty: FormState = {
   title: "",
   category: "Project",
   subCategory: "",
-  projectName: "",
-  subTitle: "",
   company: "",
   startDate: "",
   endDate: "",
@@ -79,8 +75,6 @@ function toFormState(p: Partial<Project> | undefined): FormState {
     title: p.title ?? "",
     category: (p.category as Project["category"]) ?? "Project",
     subCategory: p.subCategory ?? "",
-    projectName: p.projectName ?? "",
-    subTitle: p.subTitle ?? "",
     company: p.company ?? "",
     startDate: p.startDate ?? "",
     endDate: p.endDate ?? "",
@@ -99,9 +93,7 @@ function toProject(s: FormState): Project {
     title: s.title.trim(),
     category: s.category,
     subCategory: (s.subCategory as SubCategory) || undefined,
-    projectName: s.projectName.trim() || undefined,
-    subTitle: s.category === "Personal" ? s.subTitle.trim() || undefined : undefined,
-    company: s.category === "Project" ? s.company.trim() || undefined : undefined,
+    company: s.company.trim() || undefined,
     startDate: s.startDate || undefined,
     endDate: s.endDate || undefined,
     role: s.role.trim(),
@@ -564,49 +556,14 @@ export default function ProjectForm({
             </select>
           </Field>
 
-          <Field label="URL Slug">
+          <Field label="Company" full>
             <input
-              value={s.slug}
-              onChange={(e) => {
-                setSlugDirty(true);
-                set("slug", e.target.value);
-              }}
-              onBlur={(e) => set("slug", slugify(e.target.value))}
-              placeholder="my-project"
-              className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm font-mono outline-none focus:border-foreground"
-            />
-          </Field>
-
-          <Field label="Project Name" full>
-            <input
-              value={s.projectName}
-              onChange={(e) => set("projectName", e.target.value)}
-              placeholder="프로젝트 이름"
+              value={s.company}
+              onChange={(e) => set("company", e.target.value)}
+              placeholder="회사명"
               className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm outline-none focus:border-foreground"
             />
           </Field>
-
-          {s.category === "Personal" && (
-            <Field label="Sub Title" full>
-              <input
-                value={s.subTitle}
-                onChange={(e) => set("subTitle", e.target.value)}
-                placeholder="세부 작업명 (예: Water Shader R&D)"
-                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm outline-none focus:border-foreground"
-              />
-            </Field>
-          )}
-
-          {s.category === "Project" && (
-            <Field label="Company" full>
-              <input
-                value={s.company}
-                onChange={(e) => set("company", e.target.value)}
-                placeholder="회사명"
-                className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm outline-none focus:border-foreground"
-              />
-            </Field>
-          )}
 
           <Field label="Project date — 시작">
             <DateSelect

@@ -142,16 +142,24 @@ export default function WorkPage() {
                   className="group block h-full rounded-2xl border border-border bg-card hover:border-foreground transition overflow-hidden"
                 >
                   {r.coverImage && (
-                    <div className="aspect-video overflow-hidden bg-card/50">
+                    <div className="relative aspect-video overflow-hidden bg-card/50">
                       <img
                         src={r.coverImage}
                         alt={r.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                       />
+                      <span className="absolute top-3 left-3 rounded px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider bg-black/50 text-white backdrop-blur-sm">
+                        {r.category}
+                      </span>
                     </div>
                   )}
 
                   <div className="p-6">
+                    {!r.coverImage && (
+                      <span className="inline-block mb-3 rounded px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider border border-border text-muted">
+                        {r.category}
+                      </span>
+                    )}
                     <div className="flex items-start justify-between gap-4 mb-3">
                       <h3 className="text-lg font-semibold leading-tight pr-14">
                         {r.title || "(제목 없음)"}
@@ -167,17 +175,17 @@ export default function WorkPage() {
                             Local
                           </span>
                         )}
-                        <span className="font-mono text-[10px] uppercase tracking-wider text-muted">
-                          {r.subCategory ?? r.category}
-                        </span>
+                        {r.subCategory && (
+                          <span className="font-mono text-[10px] uppercase tracking-wider text-muted">
+                            {r.subCategory}
+                          </span>
+                        )}
                       </div>
                     </div>
 
-                    {(r.projectName || r.subTitle || r.company || r.startDate || r.endDate) && (
+                    {(r.company || r.startDate || r.endDate) && (
                       <p className="font-mono text-[11px] text-muted mb-2">
                         {[
-                          r.projectName,
-                          r.subTitle,
                           r.company,
                           (r.startDate?.slice(0, 4) || r.endDate?.slice(0, 4)) &&
                             [r.startDate?.slice(0, 4), r.endDate?.slice(0, 4)]

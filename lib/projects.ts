@@ -23,8 +23,8 @@ export type Project = {
   slug: string;
   title: string;
   category: "Project" | "Personal";
-  /** Required only when category === "Project". */
   company?: string;
+  projectName?: string;
   /** ISO date string YYYY-MM-DD. Project start date. */
   startDate?: string;
   /** ISO date string YYYY-MM-DD. Project end date. */

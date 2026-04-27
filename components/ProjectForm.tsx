@@ -638,13 +638,27 @@ export default function ProjectForm({
                 }}
               />
               {s.bodyFormat === "markdown" && (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="rounded-full border border-border px-3 py-1 text-xs font-mono hover:border-foreground transition"
-                >
-                  📎 파일 첨부
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="rounded-full border border-border px-3 py-1 text-xs font-mono hover:border-foreground transition"
+                  >
+                    📎 파일 첨부
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      insertSnippet(
+                        "```html-embed\n<!doctype html>\n<html>\n<head>\n<style>\n  body { font-family: sans-serif; padding: 16px; }\n</style>\n</head>\n<body>\n  <h2>HTML 블록</h2>\n  <p>이 안에서 HTML / CSS / JavaScript 자유롭게 사용할 수 있어요.</p>\n  <script>\n    console.log('embed loaded');\n  </script>\n</body>\n</html>\n```",
+                      )
+                    }
+                    className="rounded-full border border-border px-3 py-1 text-xs font-mono hover:border-foreground transition"
+                    title="현재 커서 위치에 HTML/CSS/JS 블록을 삽입합니다"
+                  >
+                    {"</> HTML 블록"}
+                  </button>
+                </>
               )}
               <PaneToggle value={bodyTab} onChange={setBodyTab} />
             </div>

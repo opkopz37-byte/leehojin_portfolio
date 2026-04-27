@@ -78,8 +78,42 @@ function embedVideoUrls(source: string): string {
   });
 }
 
+function escapeHtmlAttr(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+const EMBED_RESIZE_SCRIPT = `<script>(function(){function r(){try{parent.postMessage({type:'embed-height',h:Math.max(document.documentElement.scrollHeight,document.body?document.body.scrollHeight:0)},'*');}catch(e){}}window.addEventListener('load',r);if(typeof ResizeObserver!=='undefined'){new ResizeObserver(r).observe(document.documentElement);}setTimeout(r,200);setTimeout(r,1000);})();<\/script>`;
+
+function injectResizeScript(html: string): string {
+  if (/<\/body>/i.test(html)) return html.replace(/<\/body>/i, EMBED_RESIZE_SCRIPT + "</body>");
+  return html + EMBED_RESIZE_SCRIPT;
+}
+
+const EMBED_IFRAME_STYLE =
+  "width:100%;border:0;display:block;min-height:240px;border-radius:8px;margin:1.5rem 0;background:#fff;";
+
+function buildEmbedIframe(code: string): string {
+  const html = injectResizeScript(code);
+  return `<iframe data-html-embed="1" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" srcdoc="${escapeHtmlAttr(
+    html,
+  )}" style="${EMBED_IFRAME_STYLE}"></iframe>`;
+}
+
+const EMBED_FENCE_RE = /^```html-embed\s*\n([\s\S]*?)```\s*$/gm;
+
+function processHtmlEmbeds(source: string): string {
+  return source.replace(EMBED_FENCE_RE, (_match, code: string) =>
+    "\n\n" + buildEmbedIframe(code) + "\n\n",
+  );
+}
+
 export function renderMarkdown(source: string): string {
-  const preprocessed = embedVideoUrls(source ?? "");
+  const withEmbeds = processHtmlEmbeds(source ?? "");
+  const preprocessed = embedVideoUrls(withEmbeds);
   const html = marked.parse(preprocessed, { async: false }) as string;
   return autolinkHtml(html);
 }

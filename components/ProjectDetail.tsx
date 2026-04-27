@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import MarkdownView from "@/components/MarkdownView";
+import BodyView from "@/components/BodyView";
 import { MediaGallery } from "@/components/Media";
 import { formatProjectDate, type Project } from "@/lib/projects";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -136,7 +136,7 @@ export default function ProjectDetail({
       <section className="border-t border-border px-6 py-16 sm:py-24">
         <div className="mx-auto max-w-5xl grid gap-12 md:grid-cols-[180px_1fr]">
           <h2 className="font-mono text-xs text-muted">CASE STUDY</h2>
-          <MarkdownView source={project.body} />
+          <BodyView source={project.body} format={project.bodyFormat} />
         </div>
       </section>
 

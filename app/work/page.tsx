@@ -4,10 +4,14 @@ import Link from "next/link";
 import { useMemo, useState, useCallback, useEffect } from "react";
 import PageHeader from "@/components/PageHeader";
 import { deleteDraft, markDeleted, DELETED_SLUGS_KEY } from "@/lib/draftStorage";
-import { deleteRemotePost } from "@/lib/githubStorage";
+import { deleteRemotePost, upsertRemotePost } from "@/lib/githubStorage";
 import { projects, SUB_CATEGORIES, type SubCategory, type Project } from "@/lib/projects";
+import deletedJson from "../../public/data/deleted.json";
 import { useDrafts } from "@/lib/useDrafts";
 import { useAdmin } from "@/hooks/useAdmin";
+
+type DeletedRecord = Project & { deletedAt: string };
+const _staticDeleted = deletedJson as unknown as DeletedRecord[];
 
 const MAIN_FILTERS = ["All", "Project", "Personal"] as const;
 type MainFilter = (typeof MAIN_FILTERS)[number];
@@ -29,6 +33,8 @@ export default function WorkPage() {
   const [sub, setSub] = useState<SubCategory | "All">("All");
   const [deletedSlugs, setDeletedSlugs] = useState<Set<string>>(new Set());
   const [freshProjects, setFreshProjects] = useState<Project[] | null>(null);
+  const [deletedRecords, setDeletedRecords] = useState<DeletedRecord[]>(_staticDeleted);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const admin = useAdmin();
   const drafts = useDrafts();
 
@@ -46,6 +52,10 @@ export default function WorkPage() {
     fetch("/api/local/posts")
       .then((r) => r.json())
       .then((data: Project[]) => setFreshProjects(data))
+      .catch(() => {});
+    fetch("/api/local/deleted")
+      .then((r) => r.json())
+      .then((data: DeletedRecord[]) => setDeletedRecords(data))
       .catch(() => {});
   }, []);
 
@@ -91,6 +101,38 @@ export default function WorkPage() {
         .then((r) => r.json())
         .then((data: Project[]) => setFreshProjects(data))
         .catch(() => {});
+      fetch("/api/local/deleted")
+        .then((r) => r.json())
+        .then((data: DeletedRecord[]) => setDeletedRecords(data))
+        .catch(() => {});
+    }
+  }, []);
+
+  const onRestore = useCallback(async (record: DeletedRecord) => {
+    if (!confirm(`"${record.title || record.slug}" 글을 복원할까요?`)) return;
+    const { deletedAt: _del, ...project } = record;
+    try {
+      await upsertRemotePost(project as Project);
+    } catch (err) {
+      alert(`복원 실패: ${err instanceof Error ? err.message : "오류"}`);
+      return;
+    }
+    setDeletedSlugs((prev) => {
+      const next = new Set(prev);
+      next.delete(record.slug);
+      return next;
+    });
+    if (process.env.NODE_ENV === "development") {
+      fetch("/api/local/posts")
+        .then((r) => r.json())
+        .then((data: Project[]) => setFreshProjects(data))
+        .catch(() => {});
+      fetch("/api/local/deleted")
+        .then((r) => r.json())
+        .then((data: DeletedRecord[]) => setDeletedRecords(data))
+        .catch(() => {});
+    } else {
+      setDeletedRecords((prev) => prev.filter((d) => d.slug !== record.slug));
     }
   }, []);
 
@@ -289,6 +331,51 @@ export default function WorkPage() {
 
           {visible.length === 0 && (
             <p className="text-sm text-muted py-12 text-center">표시할 글이 없습니다.</p>
+          )}
+
+          {admin && deletedRecords.length > 0 && (
+            <div className="mt-12 border-t border-border pt-6">
+              <button
+                type="button"
+                onClick={() => setArchiveOpen((v) => !v)}
+                className="flex items-center gap-2 font-mono text-xs text-muted hover:text-foreground transition"
+              >
+                <span>🗑 휴지통</span>
+                <span className="rounded-full bg-foreground/5 px-2 py-0.5 text-[10px]">
+                  {deletedRecords.length}
+                </span>
+                <span className="text-[10px]">{archiveOpen ? "▾" : "▸"}</span>
+              </button>
+
+              {archiveOpen && (
+                <ul className="mt-4 grid gap-2">
+                  {[...deletedRecords]
+                    .sort((a, b) => b.deletedAt.localeCompare(a.deletedAt))
+                    .map((d) => (
+                      <li
+                        key={d.slug + d.deletedAt}
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">
+                            {d.title || `(제목 없음 — ${d.slug})`}
+                          </p>
+                          <p className="font-mono text-[10px] text-muted">
+                            {d.slug} · 삭제 {d.deletedAt.slice(0, 10)}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => onRestore(d)}
+                          className="rounded-full border border-accent/40 px-3 py-1 text-xs font-mono text-accent hover:bg-accent/10 transition"
+                        >
+                          복원
+                        </button>
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </div>
           )}
         </div>
       </section>

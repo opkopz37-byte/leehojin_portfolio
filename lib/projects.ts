@@ -37,8 +37,10 @@ export type Project = {
   coverImage?: string;
   /** Sub-category for filtering */
   subCategory?: SubCategory;
-  /** Markdown body — always source of truth for rendering. */
+  /** Body source — interpreted according to bodyFormat. */
   body: string;
+  /** Format of `body`. Defaults to "markdown" when omitted. */
+  bodyFormat?: "markdown" | "html";
   /** When set, the post was edited in block mode; preserves structure for round-trip editing. */
   blocks?: Block[];
   media: MediaItem[];

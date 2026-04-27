@@ -10,7 +10,7 @@ import React, {
   type ClipboardEvent,
   type DragEvent,
 } from "react";
-import MarkdownView from "@/components/MarkdownView";
+import BodyView from "@/components/BodyView";
 import { deleteDraft, saveDraft, markDeleted } from "@/lib/draftStorage";
 import { upsertRemotePost, deleteRemotePost, uploadImage } from "@/lib/githubStorage";
 import { SUB_CATEGORIES, type Project, type SubCategory } from "@/lib/projects";
@@ -28,6 +28,7 @@ type FormState = {
   summary: string;
   coverImage: string;
   body: string;
+  bodyFormat: "markdown" | "html";
   videoLinks: string[];
 };
 
@@ -44,6 +45,7 @@ const empty: FormState = {
   summary: "",
   coverImage: "",
   body: "",
+  bodyFormat: "markdown",
   videoLinks: [],
 };
 
@@ -83,6 +85,7 @@ function toFormState(p: Partial<Project> | undefined): FormState {
     summary: p.summary ?? "",
     coverImage: p.coverImage ?? "",
     body: p.body ?? "",
+    bodyFormat: p.bodyFormat ?? "markdown",
     videoLinks: p.videoLinks ?? [],
   };
 }
@@ -104,6 +107,7 @@ function toProject(s: FormState): Project {
     summary: s.summary.trim(),
     coverImage: s.coverImage || undefined,
     body: s.body,
+    bodyFormat: s.bodyFormat,
     media: [],
     videoLinks: s.videoLinks.filter(Boolean),
   };
@@ -605,7 +609,13 @@ export default function ProjectForm({
         {/* BODY */}
         <section className="mt-10 border-t border-border pt-8">
           <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
-            <h2 className="font-mono text-xs text-muted">본문</h2>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h2 className="font-mono text-xs text-muted">본문</h2>
+              <FormatToggle
+                value={s.bodyFormat}
+                onChange={(v) => set("bodyFormat", v)}
+              />
+            </div>
             <div className="flex items-center gap-2">
               <input
                 ref={fileInputRef}
@@ -618,13 +628,15 @@ export default function ProjectForm({
                   e.target.value = "";
                 }}
               />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="rounded-full border border-border px-3 py-1 text-xs font-mono hover:border-foreground transition"
-              >
-                📎 파일 첨부
-              </button>
+              {s.bodyFormat === "markdown" && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="rounded-full border border-border px-3 py-1 text-xs font-mono hover:border-foreground transition"
+                >
+                  📎 파일 첨부
+                </button>
+              )}
               <PaneToggle value={bodyTab} onChange={setBodyTab} />
             </div>
           </div>
@@ -634,29 +646,41 @@ export default function ProjectForm({
               ref={bodyRef}
               value={s.body}
               onChange={(e) => set("body", e.target.value)}
-              onPaste={onPaste}
-              onDrop={onDrop}
-              onDragOver={onDragOver}
-              onDragLeave={onDragLeave}
+              onPaste={s.bodyFormat === "markdown" ? onPaste : undefined}
+              onDrop={s.bodyFormat === "markdown" ? onDrop : undefined}
+              onDragOver={s.bodyFormat === "markdown" ? onDragOver : undefined}
+              onDragLeave={s.bodyFormat === "markdown" ? onDragLeave : undefined}
               spellCheck={false}
               rows={20}
-              placeholder="여기에 글을 작성하세요. 이미지·GIF·영상은 드래그하거나 붙여넣기하면 바로 들어갑니다."
+              placeholder={
+                s.bodyFormat === "markdown"
+                  ? "마크다운으로 글을 작성하세요. 이미지·GIF·영상은 드래그하거나 붙여넣기하면 바로 들어갑니다."
+                  : "전체 HTML 문서를 작성하세요. <style> 과 <script> 모두 사용 가능합니다.\n예) <!doctype html><html><head><style>body{font-family:sans-serif}</style></head><body><h1>Hello</h1><script>console.log('hi')</script></body></html>"
+              }
               className={`block w-full resize-y rounded-xl border bg-card px-4 py-3 text-sm leading-relaxed outline-none transition ${
+                s.bodyFormat === "html" ? "font-mono" : ""
+              } ${
                 dragOver
                   ? "border-accent bg-accent/5"
                   : "border-border focus:border-foreground"
               }`}
             />
             <p className="mt-2 font-mono text-[11px] text-muted">
-              이미지·GIF를 위로 끌어다 놓거나 붙여넣기(⌘V)하면 자동으로 GitHub에 업로드됩니다.
-              {imageUploading && <span className="ml-2 text-accent">⏳ 이미지 업로드 중…</span>}
+              {s.bodyFormat === "markdown" ? (
+                <>
+                  이미지·GIF를 위로 끌어다 놓거나 붙여넣기(⌘V)하면 자동으로 GitHub에 업로드됩니다.
+                  {imageUploading && <span className="ml-2 text-accent">⏳ 이미지 업로드 중…</span>}
+                </>
+              ) : (
+                <>HTML/CSS/JS 모드 — sandbox iframe 안에서 실행됩니다. 외부 사이트 이동(target=_top) 등은 제한됩니다.</>
+              )}
             </p>
           </div>
 
           <div style={{ display: bodyTab === "preview" ? "block" : "none" }}>
             <div className="rounded-xl border border-border bg-card px-6 py-5 min-h-[24rem]">
               {s.body.trim() ? (
-                <MarkdownView source={s.body} />
+                <BodyView source={s.body} format={s.bodyFormat} />
               ) : (
                 <p className="text-sm text-muted">본문이 비어 있습니다.</p>
               )}
@@ -733,6 +757,37 @@ function PaneToggle({
           className={`px-3 py-1 text-[11px] font-mono transition ${
             value === o.value
               ? "bg-foreground text-background"
+              : "text-muted hover:text-foreground"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function FormatToggle({
+  value,
+  onChange,
+}: {
+  value: "markdown" | "html";
+  onChange: (v: "markdown" | "html") => void;
+}) {
+  const options: { value: "markdown" | "html"; label: string }[] = [
+    { value: "markdown", label: "Markdown" },
+    { value: "html", label: "HTML / CSS / JS" },
+  ];
+  return (
+    <div className="flex rounded-full border border-border overflow-hidden">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          onClick={() => onChange(o.value)}
+          className={`px-3 py-1 text-[11px] font-mono transition ${
+            value === o.value
+              ? "bg-accent text-white"
               : "text-muted hover:text-foreground"
           }`}
         >

@@ -53,8 +53,18 @@ export default function ContactPage() {
   useEffect(() => {
     const merged = getMergedConfig();
     setCfg(merged);
-    const stored = localStorage.getItem(CHANNELS_KEY);
-    setChannels(stored ? JSON.parse(stored) : buildDefaults(merged));
+    const defaults = buildDefaults(merged);
+    let next: Channel[] = defaults;
+    try {
+      const stored = localStorage.getItem(CHANNELS_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          next = parsed;
+        }
+      }
+    } catch {}
+    setChannels(next);
     setHydrated(true);
 
     const update = () => setCfg(getMergedConfig());

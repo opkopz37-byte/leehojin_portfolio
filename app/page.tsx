@@ -1,11 +1,11 @@
 import Hero from "@/components/Hero";
-import ExploreSection from "@/components/ExploreSection";
+import LandingPreview from "@/components/LandingPreview";
 
 export default function Page() {
   return (
     <>
       <Hero />
-      <ExploreSection />
+      <LandingPreview />
     </>
   );
 }

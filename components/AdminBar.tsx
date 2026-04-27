@@ -22,6 +22,15 @@ export default function AdminBar() {
     }
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     if (tryLogin(pw)) {
@@ -45,7 +54,7 @@ export default function AdminBar() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         title={admin ? "관리자 메뉴" : "관리자 로그인"}
-        className="fixed bottom-6 right-6 z-40 w-10 h-10 rounded-full border border-border bg-card flex items-center justify-center text-sm shadow-md hover:border-foreground transition"
+        className="fixed bottom-6 right-6 z-50 w-10 h-10 rounded-full border border-border bg-card flex items-center justify-center text-sm shadow-md hover:border-foreground transition"
       >
         {admin ? "✏️" : "🔒"}
       </button>
@@ -53,13 +62,21 @@ export default function AdminBar() {
       {/* Dropdown / modal */}
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-end p-6 sm:items-center sm:justify-center"
+          className="fixed inset-0 z-[60] flex items-end justify-end p-6 sm:items-center sm:justify-center bg-black/40"
           onClick={() => setOpen(false)}
         >
           <div
-            className="bg-card border border-border rounded-2xl p-6 w-full max-w-xs shadow-2xl"
+            className="relative bg-card border border-border rounded-2xl p-6 w-full max-w-xs shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="닫기"
+              className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full text-muted hover:text-foreground hover:bg-foreground/5 transition"
+            >
+              ×
+            </button>
             {admin ? (
               <>
                 <p className="font-mono text-xs text-accent mb-4">관리자 모드 활성화됨</p>

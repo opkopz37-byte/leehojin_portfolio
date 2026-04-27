@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import ProjectForm from "@/components/ProjectForm";
 import { getDraft } from "@/lib/draftStorage";
@@ -9,6 +9,7 @@ import { getProject, type Project } from "@/lib/projects";
 import { isAdmin } from "@/lib/auth";
 
 function EditView() {
+  const router = useRouter();
   const params = useSearchParams();
   const slug = params.get("slug") ?? "";
   const [state, setState] = useState<{
@@ -26,7 +27,7 @@ function EditView() {
     }
 
     if (!slug) {
-      setState({ overrides: false, uploaded: false, ready: true, forbidden: false });
+      router.replace("/work");
       return;
     }
     const draft = getDraft(slug);
@@ -68,13 +69,7 @@ function EditView() {
   if (!slug) {
     return (
       <div className="px-6 pt-40 pb-24 mx-auto max-w-3xl">
-        <p className="text-sm text-muted">편집할 글의 slug가 없습니다.</p>
-        <Link
-          href="/work"
-          className="mt-4 inline-block font-mono text-xs text-muted hover:text-foreground"
-        >
-          ← Work
-        </Link>
+        <p className="font-mono text-xs text-muted">Work 목록으로 이동 중…</p>
       </div>
     );
   }

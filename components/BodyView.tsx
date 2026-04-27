@@ -9,8 +9,17 @@ type Props = {
   className?: string;
 };
 
-export default function BodyView({ source, format = "markdown", className = "" }: Props) {
-  if (format === "html") {
+/** Posts authored before bodyFormat existed may contain a full HTML document.
+ *  Detect that and render in the sandbox so it doesn't blow up the page DOM. */
+function detectFormat(source: string): "markdown" | "html" {
+  const head = source.trimStart().slice(0, 200).toLowerCase();
+  if (head.startsWith("<!doctype html") || head.startsWith("<html")) return "html";
+  return "markdown";
+}
+
+export default function BodyView({ source, format, className = "" }: Props) {
+  const resolved = format ?? detectFormat(source);
+  if (resolved === "html") {
     return <HtmlSandbox source={source} className={className} />;
   }
   return <MarkdownView source={source} className={className} />;

@@ -51,6 +51,193 @@ const empty: FormState = {
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
+const IMG_TAG_RE = /<img\b[^>]*>/gi;
+
+function replaceNthImgSrc(html: string, n: number, newSrc: string): string {
+  let i = 0;
+  return html.replace(IMG_TAG_RE, (tag) => {
+    if (i++ !== n) return tag;
+    if (/\bsrc\s*=\s*["'][^"']*["']/i.test(tag)) {
+      return tag.replace(/\bsrc\s*=\s*["'][^"']*["']/i, `src="${newSrc}"`);
+    }
+    return tag.replace(/<img\b/i, `<img src="${newSrc}"`);
+  });
+}
+
+function removeNthImg(html: string, n: number): string {
+  let i = 0;
+  return html.replace(IMG_TAG_RE, (tag) => (i++ === n ? "" : tag));
+}
+
+function insertImgBeforeBodyEnd(html: string, imgTag: string): string {
+  if (/<\/body>/i.test(html)) {
+    return html.replace(/<\/body>/i, `  ${imgTag}\n</body>`);
+  }
+  return html + `\n${imgTag}\n`;
+}
+
+const VOID_TAGS = new Set([
+  "area", "base", "br", "col", "embed", "hr", "img",
+  "input", "link", "meta", "source", "track", "wbr",
+]);
+
+type ElInfo = {
+  outerStart: number;
+  outerEnd: number;
+  innerStart: number;
+  innerEnd: number;
+  tagName: string;
+};
+
+/** Enumerate direct child elements within [scopeStart, scopeEnd). Skips text/comments,
+ *  honors void/self-close tags and raw-text elements (script/style). */
+function findChildElements(html: string, scopeStart: number, scopeEnd: number): ElInfo[] {
+  const out: ElInfo[] = [];
+  let i = scopeStart;
+  while (i < scopeEnd) {
+    if (html[i] !== "<") { i++; continue; }
+    if (html.startsWith("<!--", i)) {
+      const e = html.indexOf("-->", i);
+      i = e === -1 ? scopeEnd : Math.min(scopeEnd, e + 3);
+      continue;
+    }
+    if (html[i + 1] === "!" || html[i + 1] === "?") {
+      const e = html.indexOf(">", i);
+      i = e === -1 ? scopeEnd : Math.min(scopeEnd, e + 1);
+      continue;
+    }
+    const tagEnd = html.indexOf(">", i);
+    if (tagEnd === -1 || tagEnd >= scopeEnd) break;
+    const inner = html.slice(i + 1, tagEnd);
+    const isClose = inner.startsWith("/");
+    if (isClose) { i = tagEnd + 1; continue; }
+    const isSelfClose = inner.endsWith("/");
+    const tagName = (inner.match(/^([a-zA-Z][\w-]*)/)?.[1] ?? "").toLowerCase();
+    if (!tagName) { i = tagEnd + 1; continue; }
+
+    const outerStart = i;
+    const innerStart = tagEnd + 1;
+
+    if (isSelfClose || VOID_TAGS.has(tagName)) {
+      out.push({ outerStart, outerEnd: innerStart, innerStart, innerEnd: innerStart, tagName });
+      i = innerStart;
+      continue;
+    }
+
+    if (tagName === "script" || tagName === "style") {
+      const closeRe = new RegExp(`</${tagName}\\s*>`, "i");
+      const slice = html.slice(innerStart, scopeEnd);
+      const m = slice.match(closeRe);
+      if (!m || m.index === undefined) { i = scopeEnd; continue; }
+      const innerEnd = innerStart + m.index;
+      const outerEnd = innerEnd + m[0].length;
+      out.push({ outerStart, outerEnd, innerStart, innerEnd, tagName });
+      i = outerEnd;
+      continue;
+    }
+
+    // Match closing tag at depth 0 by counting only same-name opens
+    let j = innerStart;
+    let depth = 1;
+    let innerEnd = innerStart;
+    let outerEnd = innerStart;
+    while (j < scopeEnd && depth > 0) {
+      if (html[j] !== "<") { j++; continue; }
+      if (html.startsWith("<!--", j)) {
+        const e = html.indexOf("-->", j);
+        j = e === -1 ? scopeEnd : Math.min(scopeEnd, e + 3);
+        continue;
+      }
+      if (html[j + 1] === "!" || html[j + 1] === "?") {
+        const e = html.indexOf(">", j);
+        j = e === -1 ? scopeEnd : Math.min(scopeEnd, e + 1);
+        continue;
+      }
+      const te = html.indexOf(">", j);
+      if (te === -1 || te >= scopeEnd) { j = scopeEnd; break; }
+      const tInner = html.slice(j + 1, te);
+      const tIsClose = tInner.startsWith("/");
+      const tIsSelfClose = !tIsClose && tInner.endsWith("/");
+      const tName = (tInner.match(/^\/?([a-zA-Z][\w-]*)/)?.[1] ?? "").toLowerCase();
+
+      if (tIsClose) {
+        if (tName === tagName) {
+          depth--;
+          if (depth === 0) {
+            innerEnd = j;
+            outerEnd = te + 1;
+            j = te + 1;
+            break;
+          }
+        }
+        j = te + 1;
+        continue;
+      }
+
+      if (tName === "script" || tName === "style") {
+        const cre = new RegExp(`</${tName}\\s*>`, "i");
+        const slc = html.slice(te + 1, scopeEnd);
+        const cm = slc.match(cre);
+        j = cm && cm.index !== undefined ? te + 1 + cm.index + cm[0].length : scopeEnd;
+        continue;
+      }
+
+      if (!tIsSelfClose && !VOID_TAGS.has(tName) && tName === tagName) depth++;
+      j = te + 1;
+    }
+
+    out.push({ outerStart, outerEnd, innerStart, innerEnd, tagName });
+    i = outerEnd;
+  }
+  return out;
+}
+
+function findElementByPath(html: string, path: number[]): ElInfo | null {
+  if (path.length === 0) return null;
+  const bodyOpen = html.match(/<body[^>]*>/i);
+  let scopeStart = bodyOpen ? bodyOpen.index! + bodyOpen[0].length : 0;
+  const closeRel = html.slice(scopeStart).search(/<\/body\s*>/i);
+  let scopeEnd = closeRel >= 0 ? scopeStart + closeRel : html.length;
+
+  let result: ElInfo | null = null;
+  for (let d = 0; d < path.length; d++) {
+    const idx = path[d];
+    const children = findChildElements(html, scopeStart, scopeEnd);
+    if (idx < 0 || idx >= children.length) return null;
+    result = children[idx];
+    if (d < path.length - 1) {
+      scopeStart = result.innerStart;
+      scopeEnd = result.innerEnd;
+    }
+  }
+  return result;
+}
+
+function insertAtElementPath(
+  html: string,
+  path: number[],
+  position: "before" | "after",
+  imgTag: string,
+): string {
+  const info = findElementByPath(html, path);
+  if (!info) return html;
+  const at = position === "before" ? info.outerStart : info.outerEnd;
+  return html.slice(0, at) + `\n  ${imgTag}\n  ` + html.slice(at);
+}
+
+function buildImgTag(
+  src: string,
+  alt: string,
+  size: 25 | 50 | 75 | 100,
+  align: "left" | "center" | "right",
+): string {
+  if (align === "center") {
+    return `<img src="${src}" alt="${alt}" style="display:block;margin:1.5rem auto;width:${size}%;max-width:100%;height:auto;" />`;
+  }
+  const margin = align === "left" ? "0 1.5rem 1rem 0" : "0 0 1rem 1.5rem";
+  return `<img src="${src}" alt="${alt}" style="float:${align};margin:${margin};width:${size}%;max-width:${size}%;height:auto;" />`;
+}
+
 function slugify(s: string): string {
   return s
     .toLowerCase()
@@ -143,6 +330,14 @@ export default function ProjectForm({
   const [pushError, setPushError] = useState<string | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
   const [pendingImages, setPendingImages] = useState<Array<{ url: string; filename: string }>>([]);
+  const previewImageInputRef = useRef<HTMLInputElement | null>(null);
+  const [previewEdit, setPreviewEdit] = useState<{
+    path: number[];
+    tagPath: string[];
+    isImg: boolean;
+    imgIndex: number;
+    imgSrc: string;
+  } | null>(null);
 
   useEffect(() => {
     if (slugDirty) return;
@@ -367,6 +562,100 @@ export default function ProjectForm({
     setDragOver(false);
   }
 
+  // ---- HTML preview image editing ---------------------------------------
+
+  useEffect(() => {
+    function onMessage(e: MessageEvent) {
+      const data = e.data as {
+        type?: string;
+        path?: number[];
+        tagPath?: string[];
+        isImg?: boolean;
+        imgIndex?: number;
+        imgSrc?: string;
+      } | null;
+      if (!data || data.type !== "editor-element-click") return;
+      if (s.bodyFormat !== "html" || bodyTab !== "preview") return;
+      if (!Array.isArray(data.path) || data.path.length === 0) return;
+      setPreviewEdit({
+        path: data.path,
+        tagPath: Array.isArray(data.tagPath) ? data.tagPath : [],
+        isImg: !!data.isImg,
+        imgIndex: typeof data.imgIndex === "number" ? data.imgIndex : -1,
+        imgSrc: typeof data.imgSrc === "string" ? data.imgSrc : "",
+      });
+    }
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [s.bodyFormat, bodyTab]);
+
+  async function uploadAndBuildTag(
+    file: File,
+    size: 25 | 50 | 75 | 100,
+    align: "left" | "center" | "right",
+  ): Promise<string | null> {
+    if (file.size > MAX_FILE_BYTES) {
+      alert(`${(file.size / 1024 / 1024).toFixed(1)}MB — 10MB 이하 파일만 가능합니다.`);
+      return null;
+    }
+    try {
+      const dataUrl = await readAsDataUrl(file);
+      setImageUploading(true);
+      let url = dataUrl;
+      try {
+        url = await uploadImage(file.name, dataUrl);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setImageUploading(false);
+      }
+      return buildImgTag(url, file.name, size, align);
+    } catch {
+      alert("이미지 읽기 실패");
+      return null;
+    }
+  }
+
+  async function appendImageToHtmlBody(file: File) {
+    const tag = await uploadAndBuildTag(file, 100, "center");
+    if (!tag) return;
+    set("body", insertImgBeforeBodyEnd(s.body, tag));
+  }
+
+  async function replaceImage(index: number, file: File) {
+    if (file.size > MAX_FILE_BYTES) {
+      alert(`${(file.size / 1024 / 1024).toFixed(1)}MB — 10MB 이하 파일만 가능합니다.`);
+      return;
+    }
+    try {
+      const dataUrl = await readAsDataUrl(file);
+      setImageUploading(true);
+      let url = dataUrl;
+      try {
+        url = await uploadImage(file.name, dataUrl);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setImageUploading(false);
+      }
+      set("body", replaceNthImgSrc(s.body, index, url));
+    } catch {
+      alert("이미지 읽기 실패");
+    }
+  }
+
+  async function insertAtPath(
+    path: number[],
+    position: "before" | "after",
+    file: File,
+    size: 25 | 50 | 75 | 100,
+    align: "left" | "center" | "right",
+  ) {
+    const tag = await uploadAndBuildTag(file, size, align);
+    if (!tag) return;
+    set("body", insertAtElementPath(s.body, path, position, tag));
+  }
+
   // ---- render ------------------------------------------------------------
 
   return (
@@ -396,6 +685,29 @@ export default function ProjectForm({
             insertSnippet(`![${img.filename}](${img.url})`);
             setPendingImages((q) => q.slice(1));
           }}
+        />
+      )}
+
+      {previewEdit && (
+        <ElementEditModal
+          edit={previewEdit}
+          onReplace={async (file) => {
+            const idx = previewEdit.imgIndex;
+            setPreviewEdit(null);
+            if (idx >= 0) await replaceImage(idx, file);
+          }}
+          onDelete={() => {
+            if (!confirm("이 이미지를 삭제할까요?")) return;
+            const idx = previewEdit.imgIndex;
+            setPreviewEdit(null);
+            if (idx >= 0) set("body", removeNthImg(s.body, idx));
+          }}
+          onInsert={async (file, position, size, align) => {
+            const path = previewEdit.path;
+            setPreviewEdit(null);
+            await insertAtPath(path, position, file, size, align);
+          }}
+          onCancel={() => setPreviewEdit(null)}
         />
       )}
 
@@ -701,9 +1013,40 @@ export default function ProjectForm({
           </div>
 
           <div style={{ display: bodyTab === "preview" ? "block" : "none" }}>
+            {s.bodyFormat === "html" && s.body.trim() && (
+              <div className="mb-3 flex items-center justify-between gap-3 flex-wrap">
+                <p className="font-mono text-[11px] text-muted">
+                  미리보기 위에서 <span className="text-accent">아무 요소</span>나 클릭 → 그 정확한 위치에 이미지 삽입.
+                  크기·정렬·교체·삭제 모두 모달에서 선택.
+                  {imageUploading && <span className="ml-2 text-accent">⏳ 업로드 중…</span>}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => previewImageInputRef.current?.click()}
+                  className="rounded-full border border-accent/40 bg-accent/10 text-accent px-3 py-1 text-xs font-mono hover:bg-accent/20 transition"
+                >
+                  + 이미지 추가
+                </button>
+                <input
+                  ref={previewImageInputRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file) await appendImageToHtmlBody(file);
+                  }}
+                />
+              </div>
+            )}
             <div className="rounded-xl border border-border bg-card px-6 py-5 min-h-[24rem]">
               {s.body.trim() ? (
-                <BodyView source={s.body} format={s.bodyFormat} />
+                <BodyView
+                  source={s.body}
+                  format={s.bodyFormat}
+                  editorMode={s.bodyFormat === "html"}
+                />
               ) : (
                 <p className="text-sm text-muted">본문이 비어 있습니다.</p>
               )}
@@ -1046,3 +1389,138 @@ function ImageOptionsModal({
     </div>
   );
 }
+
+function ElementEditModal({
+  edit,
+  onReplace,
+  onDelete,
+  onInsert,
+  onCancel,
+}: {
+  edit: { path: number[]; tagPath: string[]; isImg: boolean; imgIndex: number; imgSrc: string };
+  onReplace: (file: File) => void | Promise<void>;
+  onDelete: () => void;
+  onInsert: (
+    file: File,
+    position: "before" | "after",
+    size: 25 | 50 | 75 | 100,
+    align: "left" | "center" | "right",
+  ) => void | Promise<void>;
+  onCancel: () => void;
+}) {
+  const [size, setSize] = React.useState<25 | 50 | 75 | 100>(100);
+  const [align, setAlign] = React.useState<"left" | "center" | "right">("center");
+  const replaceRef = useRef<HTMLInputElement | null>(null);
+  const beforeRef = useRef<HTMLInputElement | null>(null);
+  const afterRef = useRef<HTMLInputElement | null>(null);
+
+  const breadcrumb = edit.tagPath.length > 0 ? edit.tagPath.join(" › ") : "(root)";
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
+      onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="bg-card border border-border rounded-2xl max-w-md w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-sm font-semibold mb-2">
+          {edit.isImg ? "이미지 편집 / 추가" : "이미지 추가"}
+        </h3>
+        <p className="font-mono text-[11px] text-muted mb-5 break-words">
+          위치: <span className="text-accent">{breadcrumb}</span>
+        </p>
+
+        {edit.isImg && edit.imgSrc && (
+          <div className="mb-5 rounded-lg border border-border overflow-hidden bg-background flex items-center justify-center h-32">
+            <img src={edit.imgSrc} alt="선택된 이미지" className="max-h-full max-w-full object-contain" />
+          </div>
+        )}
+
+        <p className="font-mono text-[10px] uppercase tracking-wider text-muted mb-2">크기</p>
+        <div className="flex gap-2 mb-4">
+          {([25, 50, 75, 100] as const).map((sz) => (
+            <button
+              key={sz}
+              type="button"
+              onClick={() => setSize(sz)}
+              className={`flex-1 rounded-md border py-1.5 text-xs font-mono transition ${
+                size === sz ? "bg-foreground text-background border-foreground" : "border-border hover:border-foreground"
+              }`}
+            >
+              {sz}%
+            </button>
+          ))}
+        </div>
+
+        <p className="font-mono text-[10px] uppercase tracking-wider text-muted mb-2">정렬</p>
+        <div className="flex gap-2 mb-5">
+          {(["left", "center", "right"] as const).map((a) => (
+            <button
+              key={a}
+              type="button"
+              onClick={() => setAlign(a)}
+              className={`flex-1 rounded-md border py-1.5 text-xs transition ${
+                align === a ? "bg-foreground text-background border-foreground" : "border-border hover:border-foreground"
+              }`}
+            >
+              {a === "left" ? "왼쪽" : a === "center" ? "가운데" : "오른쪽"}
+            </button>
+          ))}
+        </div>
+
+        <input ref={replaceRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onReplace(f); }} />
+        <input ref={beforeRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onInsert(f, "before", size, align); }} />
+        <input ref={afterRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onInsert(f, "after", size, align); }} />
+
+        <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => beforeRef.current?.click()}
+              className="rounded-full bg-foreground text-background px-3 py-2 text-sm font-medium hover:opacity-90 transition"
+            >
+              ↑ 이 위에 추가
+            </button>
+            <button
+              type="button"
+              onClick={() => afterRef.current?.click()}
+              className="rounded-full bg-foreground text-background px-3 py-2 text-sm font-medium hover:opacity-90 transition"
+            >
+              ↓ 이 아래에 추가
+            </button>
+          </div>
+          {edit.isImg && (
+            <>
+              <button
+                type="button"
+                onClick={() => replaceRef.current?.click()}
+                className="w-full rounded-full border border-accent/40 bg-accent/10 text-accent px-4 py-2 text-sm font-medium hover:bg-accent/20 transition"
+              >
+                🔄 이 이미지 교체 (크기/정렬 유지)
+              </button>
+              <button
+                type="button"
+                onClick={onDelete}
+                className="w-full rounded-full border border-red-500/40 text-red-500 px-4 py-2 text-sm font-medium hover:bg-red-500 hover:text-white hover:border-red-500 transition"
+              >
+                🗑 이 이미지 삭제
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={onCancel}
+            className="w-full rounded-full border border-border px-4 py-2 text-sm hover:border-foreground transition"
+          >
+            취소
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+

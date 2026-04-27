@@ -6,6 +6,13 @@ import { MediaGallery } from "@/components/Media";
 import { formatProjectDate, type Project } from "@/lib/projects";
 import { useAdmin } from "@/hooks/useAdmin";
 
+function isHtmlBody(project: Project): boolean {
+  if (project.bodyFormat === "html") return true;
+  if (project.bodyFormat === "markdown") return false;
+  const head = (project.body ?? "").trimStart().slice(0, 200).toLowerCase();
+  return head.startsWith("<!doctype html") || head.startsWith("<html");
+}
+
 export default function ProjectDetail({
   project,
   draftBadge,
@@ -18,11 +25,12 @@ export default function ProjectDetail({
   const projectDate = formatProjectDate(project.startDate, project.endDate);
   const admin = useAdmin();
   const resolvedEditHref = editHref ?? (admin ? `/work/edit?slug=${project.slug}` : undefined);
+  const htmlBody = isHtmlBody(project);
 
   return (
     <article>
-      <header className="px-6 pt-32 pb-12 sm:pt-40 sm:pb-16">
-        <div className="mx-auto max-w-5xl">
+      <header className="px-4 sm:px-6 pt-32 pb-12 sm:pt-40 sm:pb-16">
+        <div className="mx-auto w-full max-w-none">
           <div className="flex items-center justify-between gap-4 mb-8">
             <Link
               href="/work"
@@ -114,8 +122,8 @@ export default function ProjectDetail({
       </header>
 
       {(project.videoLinks?.filter(Boolean).length || project.media.length > 0) ? (
-        <section className="border-t border-border px-6 py-12 sm:py-16">
-          <div className="mx-auto max-w-5xl">
+        <section className="border-t border-border px-4 sm:px-6 py-12 sm:py-16">
+          <div className="mx-auto w-full max-w-none">
             {project.videoLinks && project.videoLinks.filter(Boolean).length > 0 && (
               <div className="space-y-6 mb-8">
                 {project.videoLinks.filter(Boolean).map((url) => (
@@ -133,16 +141,22 @@ export default function ProjectDetail({
         </section>
       ) : null}
 
-      <section className="border-t border-border px-6 py-16 sm:py-24">
-        <div className="mx-auto max-w-5xl grid gap-12 md:grid-cols-[180px_1fr]">
-          <h2 className="font-mono text-xs text-muted">CASE STUDY</h2>
-          <BodyView source={project.body} format={project.bodyFormat} />
-        </div>
-      </section>
+      {htmlBody ? (
+        <section className="block">
+          <BodyView source={project.body} format={project.bodyFormat} className="block w-full" />
+        </section>
+      ) : (
+        <section className="border-t border-border px-4 sm:px-6 py-12 sm:py-24">
+          <div className="mx-auto w-full max-w-none grid gap-8 md:grid-cols-[180px_1fr] md:gap-12">
+            <h2 className="font-mono text-xs text-muted">CASE STUDY</h2>
+            <BodyView source={project.body} format={project.bodyFormat} />
+          </div>
+        </section>
+      )}
 
       {project.links && project.links.length > 0 && (
-        <section className="border-t border-border px-6 py-12">
-          <div className="mx-auto max-w-5xl">
+        <section className={`px-4 sm:px-6 py-12 ${htmlBody ? "" : "border-t border-border"}`}>
+          <div className="mx-auto w-full max-w-none">
             <h2 className="font-mono text-xs text-muted mb-4">LINKS</h2>
             <ul className="flex flex-wrap gap-3">
               {project.links.map((l) => (

@@ -167,7 +167,7 @@ export default function ProjectForm({
     return issues;
   }
 
-  function persist(opts: { uploaded: boolean }): { slug: string } | null {
+  function persist(opts: { uploaded: boolean }): Project | null {
     let p = project;
     if (!p.slug) p = { ...p, slug: `untitled-${Date.now().toString(36)}` };
     if (!p.title) p = { ...p, title: "(제목 없음)" };
@@ -180,7 +180,8 @@ export default function ProjectForm({
       setUploaded(opts.uploaded);
       setWarning(null);
       setSaveError(null);
-      return { slug: saved.slug };
+      const { updatedAt: _u, overrides: _o, uploaded: _up, ...rest } = saved;
+      return rest as Project;
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : "저장 실패. localStorage를 확인하세요.";
@@ -195,16 +196,18 @@ export default function ProjectForm({
     if (mode === "new") router.replace(`/work/edit?slug=${result.slug}`);
   }
 
-  async function pushToGitHub(p: Project) {
+  async function pushToGitHub(p: Project): Promise<boolean> {
     setPushing(true);
     setPushStatus("idle");
     setPushError(null);
     try {
       await upsertRemotePost(p);
       setPushStatus("success");
+      return true;
     } catch (err) {
       setPushStatus("error");
       setPushError(err instanceof Error ? err.message : "GitHub 저장 실패");
+      return false;
     } finally {
       setPushing(false);
     }
@@ -216,19 +219,21 @@ export default function ProjectForm({
       setWarning({ issues });
       return;
     }
-    const result = persist({ uploaded: true });
-    if (!result) return;
-    await pushToGitHub(project);
+    const persisted = persist({ uploaded: true });
+    if (!persisted) return;
+    const ok = await pushToGitHub(persisted);
+    if (!ok) return;
     // Clear draft — fresh data is now in posts.json and will be fetched by work page
-    deleteDraft(result.slug);
+    deleteDraft(persisted.slug);
     router.push("/work");
   }
 
   async function onForceUpload() {
-    const result = persist({ uploaded: true });
-    if (!result) return;
-    await pushToGitHub(project);
-    deleteDraft(result.slug);
+    const persisted = persist({ uploaded: true });
+    if (!persisted) return;
+    const ok = await pushToGitHub(persisted);
+    if (!ok) return;
+    deleteDraft(persisted.slug);
     router.push("/work");
   }
 

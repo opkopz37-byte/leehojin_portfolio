@@ -2,13 +2,24 @@
 
 import { useEffect, useRef, useState } from "react";
 import { isAdmin, tryLogin, adminLogout } from "@/lib/auth";
+import { syncAllToFile } from "@/lib/configStorage";
 
 export default function AdminBar() {
   const [admin, setAdmin] = useState(false);
   const [open, setOpen] = useState(false);
   const [pw, setPw] = useState("");
   const [error, setError] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncDone, setSyncDone] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  async function handleSync() {
+    setSyncing(true);
+    await syncAllToFile();
+    setSyncing(false);
+    setSyncDone(true);
+    setTimeout(() => setSyncDone(false), 2000);
+  }
 
   useEffect(() => {
     setAdmin(isAdmin());
@@ -80,10 +91,19 @@ export default function AdminBar() {
             {admin ? (
               <>
                 <p className="font-mono text-xs text-accent mb-4">관리자 모드 활성화됨</p>
-                <p className="text-sm text-muted mb-6">
+                <p className="text-sm text-muted mb-4">
                   현재 글쓰기·수정·삭제 권한이 있습니다.
-                  <br />세션이 끝나면 자동으로 해제됩니다.
                 </p>
+                {process.env.NODE_ENV === "development" && (
+                  <button
+                    type="button"
+                    onClick={handleSync}
+                    disabled={syncing}
+                    className="w-full rounded-full border border-accent/40 bg-accent/10 text-accent px-4 py-2 text-sm mb-3 hover:bg-accent/20 transition disabled:opacity-50"
+                  >
+                    {syncing ? "저장 중…" : syncDone ? "✓ 저장 완료" : "설정을 파일로 저장"}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleLogout}

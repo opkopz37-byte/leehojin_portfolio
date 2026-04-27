@@ -4,19 +4,14 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import InlineEdit from "@/components/InlineEdit";
 import { useAdmin } from "@/hooks/useAdmin";
+import { loadConfigValue, saveConfigValue } from "@/lib/configStorage";
 
 function storageKey(label: string) {
   return `portfolio.header.${label.toLowerCase()}`;
 }
 
 function loadOverrides(label: string, defaults: { title: string; description: string }) {
-  try {
-    const raw = localStorage.getItem(storageKey(label));
-    if (!raw) return defaults;
-    return { ...defaults, ...JSON.parse(raw) };
-  } catch {
-    return defaults;
-  }
+  return loadConfigValue(storageKey(label), defaults);
 }
 
 export default function PageHeader({
@@ -44,10 +39,8 @@ export default function PageHeader({
 
   function save(field: "title" | "description", value: string) {
     const key = storageKey(label);
-    try {
-      const current = JSON.parse(localStorage.getItem(key) ?? "{}");
-      localStorage.setItem(key, JSON.stringify({ ...current, [field]: value }));
-    } catch {}
+    const current = loadConfigValue<{ title?: string; description?: string }>(key, {});
+    saveConfigValue(key, { ...current, [field]: value });
     if (field === "title") setTitle(value);
     else setDescription(value);
   }

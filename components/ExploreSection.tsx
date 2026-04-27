@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import InlineEdit from "@/components/InlineEdit";
 import { useAdmin } from "@/hooks/useAdmin";
 import { categories, type Category } from "@/lib/categories";
+import { loadConfigValue, saveConfigValue } from "@/lib/configStorage";
 
 type Override = { title?: string; blurb?: string };
 
@@ -13,24 +14,18 @@ function storageKey(slug: string) {
 }
 
 function loadOverrides(): Record<string, Override> {
-  try {
-    const out: Record<string, Override> = {};
-    for (const c of categories) {
-      const raw = localStorage.getItem(storageKey(c.slug));
-      if (raw) out[c.slug] = JSON.parse(raw);
-    }
-    return out;
-  } catch {
-    return {};
+  const out: Record<string, Override> = {};
+  for (const c of categories) {
+    const val = loadConfigValue<Override>(storageKey(c.slug), {});
+    if (Object.keys(val).length > 0) out[c.slug] = val;
   }
+  return out;
 }
 
 function saveOverride(slug: string, field: "title" | "blurb", value: string) {
-  try {
-    const key = storageKey(slug);
-    const current = JSON.parse(localStorage.getItem(key) ?? "{}");
-    localStorage.setItem(key, JSON.stringify({ ...current, [field]: value }));
-  } catch {}
+  const key = storageKey(slug);
+  const current = loadConfigValue<Override>(key, {});
+  saveConfigValue(key, { ...current, [field]: value });
 }
 
 const HEADING_KEY = "portfolio.explore.heading";
@@ -43,10 +38,8 @@ export default function ExploreSection() {
 
   useEffect(() => {
     setOverrides(loadOverrides());
-    try {
-      const h = localStorage.getItem(HEADING_KEY);
-      if (h) setHeading(h);
-    } catch {}
+    const h = loadConfigValue<string>(HEADING_KEY, "Explore");
+    setHeading(h);
     setHydrated(true);
   }, []);
 
@@ -76,7 +69,7 @@ export default function ExploreSection() {
               <InlineEdit
                 value={heading}
                 onSave={(v) => {
-                  try { localStorage.setItem(HEADING_KEY, v); } catch {}
+                  saveConfigValue(HEADING_KEY, v);
                   setHeading(v);
                 }}
               />

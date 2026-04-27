@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PageHeader from "@/components/PageHeader";
 import InlineEdit from "@/components/InlineEdit";
 import { useAdmin } from "@/hooks/useAdmin";
+import { loadConfigValue, saveConfigValue } from "@/lib/configStorage";
 
 const defaultExpertise = [
   { title: "Shader Development", desc: "HLSL · Shader Graph · Surface · 머티리얼 프로토타입과 최적화된 셰이더 작성." },
@@ -23,15 +24,6 @@ const defaultStack = [
 const EXPERTISE_KEY = "portfolio.about.expertise";
 const STACK_KEY = "portfolio.about.stack";
 
-function loadExpertise() {
-  if (typeof window === "undefined") return defaultExpertise;
-  try { const r = localStorage.getItem(EXPERTISE_KEY); return r ? JSON.parse(r) : defaultExpertise; } catch { return defaultExpertise; }
-}
-function loadStack() {
-  if (typeof window === "undefined") return defaultStack;
-  try { const r = localStorage.getItem(STACK_KEY); return r ? JSON.parse(r) : defaultStack; } catch { return defaultStack; }
-}
-
 export default function AboutPage() {
   const admin = useAdmin();
   const [expertise, setExpertiseState] = useState(defaultExpertise);
@@ -39,21 +31,20 @@ export default function AboutPage() {
   const [stackInput, setStackInput] = useState("");
   const [hydrated, setHydrated] = useState(false);
 
-  // Load from localStorage on client
-  if (!hydrated && typeof window !== "undefined") {
-    setExpertiseState(loadExpertise());
-    setStackState(loadStack());
+  useEffect(() => {
+    setExpertiseState(loadConfigValue(EXPERTISE_KEY, defaultExpertise));
+    setStackState(loadConfigValue(STACK_KEY, defaultStack));
     setHydrated(true);
-  }
+  }, []);
 
   function saveExpertise(updated: typeof defaultExpertise) {
     setExpertiseState(updated);
-    localStorage.setItem(EXPERTISE_KEY, JSON.stringify(updated));
+    saveConfigValue(EXPERTISE_KEY, updated);
   }
 
   function saveStack(updated: string[]) {
     setStackState(updated);
-    localStorage.setItem(STACK_KEY, JSON.stringify(updated));
+    saveConfigValue(STACK_KEY, updated);
   }
 
   function updateExpertiseTitle(i: number, v: string) {

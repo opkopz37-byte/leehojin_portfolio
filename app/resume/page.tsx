@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PageHeader from "@/components/PageHeader";
 import InlineEdit from "@/components/InlineEdit";
 import { useAdmin } from "@/hooks/useAdmin";
+import { loadConfigValue, saveConfigValue } from "@/lib/configStorage";
 
 type Entry = { role: string; company: string; period: string; desc: string };
 
@@ -34,11 +35,6 @@ const AWARDS_KEY = "portfolio.resume.awards";
 const MILITARY_KEY = "portfolio.resume.military";
 const TRAINING_KEY = "portfolio.resume.training";
 
-function load(key: string, def: Entry[]) {
-  if (typeof window === "undefined") return def;
-  try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : def; } catch { return def; }
-}
-
 export default function ResumePage() {
   const admin = useAdmin();
   const [exp, setExp] = useState(defaultExperience);
@@ -48,20 +44,20 @@ export default function ResumePage() {
   const [training, setTraining] = useState(defaultTraining);
   const [hydrated, setHydrated] = useState(false);
 
-  if (!hydrated && typeof window !== "undefined") {
-    setExp(load(EXP_KEY, defaultExperience));
-    setEdu(load(EDU_KEY, defaultEducation));
-    setAwards(load(AWARDS_KEY, defaultAwards));
-    setMilitary(load(MILITARY_KEY, defaultMilitary));
-    setTraining(load(TRAINING_KEY, defaultTraining));
+  useEffect(() => {
+    setExp(loadConfigValue(EXP_KEY, defaultExperience));
+    setEdu(loadConfigValue(EDU_KEY, defaultEducation));
+    setAwards(loadConfigValue(AWARDS_KEY, defaultAwards));
+    setMilitary(loadConfigValue(MILITARY_KEY, defaultMilitary));
+    setTraining(loadConfigValue(TRAINING_KEY, defaultTraining));
     setHydrated(true);
-  }
+  }, []);
 
-  function saveExp(v: Entry[]) { setExp(v); localStorage.setItem(EXP_KEY, JSON.stringify(v)); }
-  function saveEdu(v: Entry[]) { setEdu(v); localStorage.setItem(EDU_KEY, JSON.stringify(v)); }
-  function saveAwards(v: Entry[]) { setAwards(v); localStorage.setItem(AWARDS_KEY, JSON.stringify(v)); }
-  function saveMilitary(v: Entry[]) { setMilitary(v); localStorage.setItem(MILITARY_KEY, JSON.stringify(v)); }
-  function saveTraining(v: Entry[]) { setTraining(v); localStorage.setItem(TRAINING_KEY, JSON.stringify(v)); }
+  function saveExp(v: Entry[]) { setExp(v); saveConfigValue(EXP_KEY, v); }
+  function saveEdu(v: Entry[]) { setEdu(v); saveConfigValue(EDU_KEY, v); }
+  function saveAwards(v: Entry[]) { setAwards(v); saveConfigValue(AWARDS_KEY, v); }
+  function saveMilitary(v: Entry[]) { setMilitary(v); saveConfigValue(MILITARY_KEY, v); }
+  function saveTraining(v: Entry[]) { setTraining(v); saveConfigValue(TRAINING_KEY, v); }
 
   function makeUpdater(list: Entry[], save: (v: Entry[]) => void, i: number) {
     return (field: keyof Entry) => (val: string) => {

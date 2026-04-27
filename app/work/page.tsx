@@ -25,6 +25,18 @@ type Row = Project & {
   href: string;
 };
 
+function categoryBadge(category: string, onImage: boolean): string {
+  const isPersonal = category === "Personal";
+  if (onImage) {
+    return isPersonal
+      ? "bg-blue-600/75 text-white backdrop-blur-sm"
+      : "bg-accent/80 text-white backdrop-blur-sm";
+  }
+  return isPersonal
+    ? "bg-blue-500/10 text-blue-500 border border-blue-500/30"
+    : "bg-accent/10 text-accent border border-accent/30";
+}
+
 /** Combine freshly read posts.json with the built-in placeholders so dev shows
  *  the same set of projects that will be rendered in production once posts.json
  *  is published. We deliberately do NOT merge with the compile-time `projects`
@@ -84,7 +96,12 @@ export default function WorkPage() {
         href: overrides ? `/work/${rest.slug}` : `/work/draft?slug=${rest.slug}`,
       };
     });
-    return [...draftRows, ...published];
+    const all = [...draftRows, ...published];
+    return all.sort((a, b) => {
+      const dateA = a.endDate ?? a.startDate ?? "";
+      const dateB = b.endDate ?? b.startDate ?? "";
+      return dateB.localeCompare(dateA);
+    });
   }, [drafts, baseProjects]);
 
   const visible = useMemo(() => {
@@ -231,7 +248,7 @@ export default function WorkPage() {
                         loading="lazy"
                         className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                       />
-                      <span className="absolute top-2 left-2 sm:top-3 sm:left-3 rounded px-1.5 py-0.5 font-mono text-[9px] sm:text-[10px] uppercase tracking-wider bg-black/50 text-white backdrop-blur-sm">
+                      <span className={`absolute top-2 left-2 sm:top-3 sm:left-3 rounded px-1.5 py-0.5 font-mono text-[9px] sm:text-[10px] uppercase tracking-wider ${categoryBadge(r.category, true)}`}>
                         {r.category}
                       </span>
                     </div>
@@ -239,7 +256,7 @@ export default function WorkPage() {
 
                   <div className="p-3 sm:p-6">
                     {!r.coverImage && (
-                      <span className="inline-block mb-2 sm:mb-3 rounded px-1.5 py-0.5 font-mono text-[9px] sm:text-[10px] uppercase tracking-wider border border-border text-muted">
+                      <span className={`inline-block mb-2 sm:mb-3 rounded px-1.5 py-0.5 font-mono text-[9px] sm:text-[10px] uppercase tracking-wider ${categoryBadge(r.category, false)}`}>
                         {r.category}
                       </span>
                     )}

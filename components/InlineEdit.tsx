@@ -11,11 +11,11 @@ type Props = {
 
 export default function InlineEdit({ value, onSave, multiline = false, className = "" }: Props) {
   const [editing, setEditing] = useState(false);
-  const [val, setVal] = useState(value);
+  const [val, setVal] = useState(value ?? "");
   const inputRef = useRef<HTMLInputElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => { setVal(value); }, [value]);
+  useEffect(() => { setVal(value ?? ""); }, [value]);
 
   useEffect(() => {
     if (editing) {

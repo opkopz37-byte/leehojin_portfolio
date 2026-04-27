@@ -1,1 +1,134 @@
-{}
+{
+  "portfolio.site.overrides.v1": {
+    "bio": "실시간 그래픽스, 셰이더 개발, 파이프라인 자동화를 통해 아티스트와 엔지니어 사이의 다리를 만듭니다.",
+    "title": "Technical Artist",
+    "name": "LEE HOJIN",
+    "github": "github.com/yourname",
+    "footerNote": "Technical/Art",
+    "email": "godwkds56@naver.com"
+  },
+  "portfolio.header.about": {
+    "description": "감각이 아닌 측정으로 원인을 찾고, 아트와 기술 양쪽에서 재현 가능한 결과를 만드는 테크니컬 아티스트입니다.",
+    "title": "About"
+  },
+  "portfolio.header.work": {
+    "title": "Case book",
+    "description": "문제를 정의하고, 구조로 해결한 작업들을 정리했습니다."
+  },
+  "portfolio.explore.resume": {
+    "title": "이력서"
+  },
+  "portfolio.resume.experience": [
+    {
+      "role": "Level Artist/Technical Artist",
+      "company": "Studio EON",
+      "period": "2026.01 — Present",
+      "desc": "언리얼 엔진 기반의 시네마틱 레벨 제작과 라이팅 작업에 참여하며, 비주얼 퀄리티와 기술적 완성도를 함께 추구했습니다.\n아티스트로서의 감각과 툴 제작 역량을 결합해, 팀 전반의 작업 효율과 결과물 수준을 높이는 데 기여했습니다.\n \n- 시네마틱 레벨 제작 (Unreal Engine)\n- 시네마틱 라이팅 팀 참여\n- Landscape Auto Material 설계 및 제작\n- Water Sparkle 머티리얼 제작\n- Physical Based Scattering Tool 개발\n- TOD(Time of Day) 기반 스카이 컨트롤러 제작"
+    },
+    {
+      "role": "Level Artist",
+      "company": "EVR Studio - Project TH(MUDANG)",
+      "period": "2024.08 — 2025.4",
+      "desc": "콘솔 출시작 무당(MUDANG)의 인게임 레벨 전반을 담당했습니다. 비주얼 품질과 퍼포먼스를 함께 확보하는 것이 핵심 과제였습니다.\n\n- 실내 라이팅 최적화 및 Emissive GI 시스템 설계\n- 인스턴싱 구조 재정의를 통한 Draw Call 절감\n- 동선 기반 Level Streaming 구조 적용\n- 머티리얼 라이브러리 표준화 및 검수 자동화 도구 제작"
+    },
+    {
+      "role": "Level Artist",
+      "company": "EVR Studio - XR Studio",
+      "period": "2022.09 — 2024.08",
+      "desc": "기업 행사, 미디어아트, VR 콘텐츠 등 XR 분야의 다수 프로젝트에 레벨 아티스트로 참여했습니다.\n라이팅, 렌더링, 레벨 아트를 주로 담당했으며, 일부 프로젝트에서는 리딩 역할도 맡았습니다.\n\n- Project TH — Xbox Showcase 2025 / 시네마틱 레벨 아트\n- Game SuperB Trailer 2024 / 라이팅\n- HD Hyundai CES 2024 / 레벨 아트 · 라이팅 · 프로젝트 리딩 · 머티리얼\n- Inus × Kimpo Airport Anamorphic Media Art / 레벨 아트\n- Samsung Unpacked Anamorphic OOH 2023 / VR 레벨 아트\n- LVMH in Korea 2023 / 레벨 아트 · 렌더링\n- 1965 Mustang 2023 / 레벨 아트 · 렌더링\n- HD Hyundai Ocean Wise & Ocean Life CES 2023 / 레벨 아트 · 렌더링\n- Samsung Harman Ready Care CES 2023 / 레벨 아트 · 렌더링"
+    },
+    {
+      "role": "Production PD",
+      "company": "PLK Good Friends Entertainment",
+      "period": "2020.02 — 2020.11",
+      "desc": "소속 연예인의 SNS 채널 및 유튜브 콘텐츠 제작을 전담했습니다.\n \n- 영상 기획 / 촬영 / 편집\n- SNS 및 유튜브 채널 운영 관리"
+    }
+  ],
+  "portfolio.resume.education": [
+    {
+      "role": "중앙대학교 첨단영상대학원",
+      "company": "영상학과 석사 과정",
+      "period": "2021.03 — 2022.08",
+      "desc": "언리얼엔진 4.26 ~ 5 기반으로 3D 애니메이션의 전체적 파이프라인을 언리얼 기반으로 연구 및 애니메이션 제작\n시네마틱 레벨 및 라이팅 구조적 연출 제작 및 연구"
+    },
+    {
+      "role": "경일대학교",
+      "company": "사진영상학부 학사",
+      "period": "2014.03 — 2020.02",
+      "desc": "뉴미디어"
+    },
+    {
+      "role": "강서고등학교",
+      "company": "인문계열",
+      "period": "2011.03 — 2014.02",
+      "desc": "설명"
+    }
+  ],
+  "portfolio.resume.awards": [
+    {
+      "role": "UNREAL 5 CHALLENGE",
+      "company": "Epic Games",
+      "period": "2022.08",
+      "desc": "학생부문 2등 수상"
+    },
+    {
+      "role": "UNREAL CHALLENGE : BETTER LIGHT THAN NEVER",
+      "company": "Epic Games",
+      "period": "2022.07",
+      "desc": "학생부문 입상"
+    },
+    {
+      "role": "UNREAL 5 NANITE CHALLENGE",
+      "company": "Epic Games",
+      "period": "2022.01",
+      "desc": "학생부문 2등 수상"
+    }
+  ],
+  "portfolio.resume.military": [
+    {
+      "role": "병장 만기 전역",
+      "company": "대한민국 육군",
+      "period": "2015.03 — 2015.12",
+      "desc": ""
+    }
+  ],
+  "portfolio.about.expertise": [
+    {
+      "title": "Physical Based Lighting Design",
+      "desc": "감각이 아닌 측정으로 라이팅 기준을 세웁니다. 디렉셔널 라이트 수치부터 EV, 명암비까지 실제 데이터를 기반으로 작업자 간 편차를 없애는 표준 파이프라인을 구축합니다."
+    },
+    {
+      "title": "Lighting Quality + Performance",
+      "desc": "비주얼을 타협하지 않으면서 퍼포먼스를 개선합니다. Emissive GI 시스템, Spot Light 중심 구조 재설계, 인스턴싱 기반 자산 관리로 측정 가능한 결과를 만듭니다."
+    },
+    {
+      "title": "Automation Tool Development",
+      "desc": "반복 작업을 구조화된 시스템으로 바꿉니다. Blueprint 기반으로 Sky Controller, Physical Scattering Tool, Landscape Auto Material 등 팀 전체가 쓸 수 있는 툴을 직접 만듭니다."
+    },
+    {
+      "title": "Cinematic Lighting Design",
+      "desc": "감정 전달과 시선 유도를 기준으로 라이팅 구조를 설계합니다. Key/Fill/Rim 구조, 보색 대비 림 라이팅, 샷 단위 최적화로 구축합니다."
+    },
+    {
+      "title": "Technical Support",
+      "desc": "아트팀과 엔지니어팀의 가교 역할. 문서화와 트레이닝 세션을 통한 지식 공유."
+    },
+    {
+      "title": "Rapid Prototyping",
+      "desc": "프로덕션 도입 전 컨셉 검증과 위험 요소 식별을 위한 빠른 프로토타입 구현. Cinematic/In-game 라이팅 R&D처럼 기준 씬 기반 비교 검증 방식을 활용합니다."
+    }
+  ],
+  "portfolio.about.stack": [
+    "Unreal Engine",
+    "Python",
+    "Maya",
+    "Photoshop",
+    "Git",
+    "Perforce",
+    "Web"
+  ],
+  "portfolio.header.resume": {
+    "description": "아트와 기술의 경계에서 쌓아온 경험들입니다.",
+    "title": "Resume"
+  }
+}

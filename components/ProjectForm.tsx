@@ -338,6 +338,7 @@ export default function ProjectForm({
     imgIndex: number;
     imgSrc: string;
   } | null>(null);
+  const [wysiwyg, setWysiwyg] = useState(false);
 
   useEffect(() => {
     if (slugDirty) return;
@@ -561,6 +562,12 @@ export default function ProjectForm({
   function onDragLeave() {
     setDragOver(false);
   }
+
+  // Auto-exit wysiwyg when switching away from HTML preview
+  useEffect(() => {
+    if (!wysiwyg) return;
+    if (bodyTab !== "preview" || s.bodyFormat !== "html") setWysiwyg(false);
+  }, [bodyTab, s.bodyFormat, wysiwyg]);
 
   // ---- HTML preview image editing ---------------------------------------
 
@@ -1016,17 +1023,34 @@ export default function ProjectForm({
             {s.bodyFormat === "html" && s.body.trim() && (
               <div className="mb-3 flex items-center justify-between gap-3 flex-wrap">
                 <p className="font-mono text-[11px] text-muted">
-                  미리보기 위에서 <span className="text-accent">아무 요소</span>나 클릭 → 그 정확한 위치에 이미지 삽입.
-                  크기·정렬·교체·삭제 모두 모달에서 선택.
+                  {wysiwyg
+                    ? <>미리보기에서 직접 텍스트를 편집 중입니다. 완료하면 <span className="text-accent">편집 완료</span>를 누르세요.</>
+                    : <><span className="text-accent">아무 요소</span>나 클릭 → 이미지 삽입·교체·삭제. 직접 편집 버튼으로 텍스트도 수정할 수 있습니다.</>
+                  }
                   {imageUploading && <span className="ml-2 text-accent">⏳ 업로드 중…</span>}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => previewImageInputRef.current?.click()}
-                  className="rounded-full border border-accent/40 bg-accent/10 text-accent px-3 py-1 text-xs font-mono hover:bg-accent/20 transition"
-                >
-                  + 이미지 추가
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setWysiwyg((v) => !v)}
+                    className={`rounded-full border px-3 py-1 text-xs font-mono transition ${
+                      wysiwyg
+                        ? "bg-accent border-accent text-white hover:opacity-90"
+                        : "border-accent/40 bg-accent/10 text-accent hover:bg-accent/20"
+                    }`}
+                  >
+                    {wysiwyg ? "✓ 편집 완료" : "✏ 직접 편집"}
+                  </button>
+                  {!wysiwyg && (
+                    <button
+                      type="button"
+                      onClick={() => previewImageInputRef.current?.click()}
+                      className="rounded-full border border-accent/40 bg-accent/10 text-accent px-3 py-1 text-xs font-mono hover:bg-accent/20 transition"
+                    >
+                      + 이미지 추가
+                    </button>
+                  )}
+                </div>
                 <input
                   ref={previewImageInputRef}
                   type="file"
@@ -1046,6 +1070,8 @@ export default function ProjectForm({
                   source={s.body}
                   format={s.bodyFormat}
                   editorMode={s.bodyFormat === "html"}
+                  wysiwyg={wysiwyg && s.bodyFormat === "html"}
+                  onContentChange={(html) => set("body", html)}
                 />
               ) : (
                 <p className="text-sm text-muted">본문이 비어 있습니다.</p>

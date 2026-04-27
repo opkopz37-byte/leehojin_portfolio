@@ -53,15 +53,6 @@ export function deleteDraft(slug: string): void {
   write(read().filter((d) => d.slug !== slug));
 }
 
-export const DELETED_SLUGS_KEY = "portfolio.work.deleted";
-
-export function markDeleted(slug: string): void {
-  try {
-    const existing: string[] = JSON.parse(localStorage.getItem(DELETED_SLUGS_KEY) ?? "[]");
-    const next = [...new Set([...existing, slug])];
-    localStorage.setItem(DELETED_SLUGS_KEY, JSON.stringify(next));
-  } catch {}
-}
 
 export function exportDraftsJSON(): string {
   return JSON.stringify(read(), null, 2);

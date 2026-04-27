@@ -3,15 +3,17 @@
 import Link from "next/link";
 import { useMemo, useState, useCallback, useEffect } from "react";
 import PageHeader from "@/components/PageHeader";
-import { deleteDraft, markDeleted, DELETED_SLUGS_KEY } from "@/lib/draftStorage";
+import { deleteDraft } from "@/lib/draftStorage";
 import { deleteRemotePost, upsertRemotePost } from "@/lib/githubStorage";
-import { projects, SUB_CATEGORIES, type SubCategory, type Project } from "@/lib/projects";
+import { projects, staticPlaceholders, SUB_CATEGORIES, type SubCategory, type Project } from "@/lib/projects";
 import deletedJson from "../../public/data/deleted.json";
 import { useDrafts } from "@/lib/useDrafts";
 import { useAdmin } from "@/hooks/useAdmin";
 
 type DeletedRecord = Project & { deletedAt: string };
 const _staticDeleted = deletedJson as unknown as DeletedRecord[];
+
+const LEGACY_DELETED_KEY = "portfolio.work.deleted";
 
 const MAIN_FILTERS = ["All", "Project", "Personal"] as const;
 type MainFilter = (typeof MAIN_FILTERS)[number];
@@ -23,26 +25,30 @@ type Row = Project & {
   href: string;
 };
 
-function mergeProjects(fresh: Project[], staticList: Project[]): Project[] {
+/** Combine freshly read posts.json with the built-in placeholders so dev shows
+ *  the same set of projects that will be rendered in production once posts.json
+ *  is published. We deliberately do NOT merge with the compile-time `projects`
+ *  array, which holds a stale snapshot of posts.json and would resurrect just-
+ *  deleted posts. */
+function mergeProjects(fresh: Project[], placeholders: Project[]): Project[] {
   const freshSlugs = new Set(fresh.map((p) => p.slug));
-  return [...fresh, ...staticList.filter((p) => !freshSlugs.has(p.slug))];
+  return [...fresh, ...placeholders.filter((p) => !freshSlugs.has(p.slug))];
 }
 
 export default function WorkPage() {
   const [main, setMain] = useState<MainFilter>("All");
   const [sub, setSub] = useState<SubCategory | "All">("All");
-  const [deletedSlugs, setDeletedSlugs] = useState<Set<string>>(new Set());
   const [freshProjects, setFreshProjects] = useState<Project[] | null>(null);
   const [deletedRecords, setDeletedRecords] = useState<DeletedRecord[]>(_staticDeleted);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const admin = useAdmin();
   const drafts = useDrafts();
 
-  // Load deletedSlugs from localStorage
+  // One-time cleanup: visibility is now driven entirely by posts.json,
+  // so the legacy localStorage filter is removed.
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(DELETED_SLUGS_KEY);
-      if (raw) setDeletedSlugs(new Set(JSON.parse(raw)));
+      localStorage.removeItem(LEGACY_DELETED_KEY);
     } catch {}
   }, []);
 
@@ -60,13 +66,13 @@ export default function WorkPage() {
   }, []);
 
   const baseProjects = freshProjects !== null
-    ? mergeProjects(freshProjects, projects)
+    ? mergeProjects(freshProjects, staticPlaceholders)
     : projects;
 
   const rows: Row[] = useMemo(() => {
     const draftSlugs = new Set(drafts.map((d) => d.slug));
     const published: Row[] = baseProjects
-      .filter((p) => !draftSlugs.has(p.slug) && !deletedSlugs.has(p.slug))
+      .filter((p) => !draftSlugs.has(p.slug))
       .map((p) => ({ ...p, isDraft: false, overrides: false, uploaded: false, href: `/work/${p.slug}` }));
     const draftRows: Row[] = drafts.map((d) => {
       const { updatedAt: _u, overrides = false, uploaded = false, ...rest } = d;
@@ -79,7 +85,7 @@ export default function WorkPage() {
       };
     });
     return [...draftRows, ...published];
-  }, [drafts, deletedSlugs, baseProjects]);
+  }, [drafts, baseProjects]);
 
   const visible = useMemo(() => {
     return rows.filter((r) => {
@@ -89,13 +95,15 @@ export default function WorkPage() {
     });
   }, [rows, main, sub]);
 
-  const onDelete = useCallback(async (slug: string, isDraft: boolean) => {
+  const onDelete = useCallback(async (slug: string, _isDraft: boolean) => {
     if (!confirm("이 글을 삭제할까요?")) return;
     deleteDraft(slug);
-    markDeleted(slug);
-    setDeletedSlugs((prev) => new Set([...prev, slug]));
-    deleteRemotePost(slug).catch(() => {});
-    // Refetch fresh data after delete
+    try {
+      await deleteRemotePost(slug);
+    } catch (err) {
+      alert(`삭제 실패: ${err instanceof Error ? err.message : "오류"}`);
+      return;
+    }
     if (process.env.NODE_ENV === "development") {
       fetch("/api/local/posts")
         .then((r) => r.json())
@@ -117,11 +125,6 @@ export default function WorkPage() {
       alert(`복원 실패: ${err instanceof Error ? err.message : "오류"}`);
       return;
     }
-    setDeletedSlugs((prev) => {
-      const next = new Set(prev);
-      next.delete(record.slug);
-      return next;
-    });
     if (process.env.NODE_ENV === "development") {
       fetch("/api/local/posts")
         .then((r) => r.json())

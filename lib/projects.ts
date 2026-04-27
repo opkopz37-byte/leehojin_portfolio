@@ -180,11 +180,15 @@ Kajiya–Kay, Marschner, Marschner-near-field 변형을 성능/룩 관점에서 
   },
 ];
 
+/** Built-in placeholder projects that are shown only when no post in posts.json
+ *  uses the same slug. Kept separate so dev mode can merge them with the freshly
+ *  read posts.json without reintroducing posts that were just deleted. */
+export const staticPlaceholders: Project[] = _staticProjects.filter(
+  (p) => !_remoteSlugSet.has(p.slug),
+);
+
 // Remote posts (from public/data/posts.json) take priority over static placeholders
-export const projects: Project[] = [
-  ..._remotePosts,
-  ..._staticProjects.filter((p) => !_remoteSlugSet.has(p.slug)),
-];
+export const projects: Project[] = [..._remotePosts, ...staticPlaceholders];
 
 export function getProject(slug: string): Project | undefined {
   return projects.find((p) => p.slug === slug);

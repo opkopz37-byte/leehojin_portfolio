@@ -11,7 +11,7 @@ import React, {
   type DragEvent,
 } from "react";
 import BodyView from "@/components/BodyView";
-import { deleteDraft, saveDraft, markDeleted } from "@/lib/draftStorage";
+import { deleteDraft, saveDraft } from "@/lib/draftStorage";
 import { upsertRemotePost, deleteRemotePost, uploadImage } from "@/lib/githubStorage";
 import { SUB_CATEGORIES, type Project, type SubCategory } from "@/lib/projects";
 
@@ -232,12 +232,16 @@ export default function ProjectForm({
     router.push("/work");
   }
 
-  function onDelete() {
+  async function onDelete() {
     if (!originalSlug) return;
     if (!confirm("이 글을 삭제할까요?")) return;
     deleteDraft(originalSlug);
-    markDeleted(originalSlug);
-    deleteRemotePost(originalSlug).catch(() => {});
+    try {
+      await deleteRemotePost(originalSlug);
+    } catch (err) {
+      alert(`삭제 실패: ${err instanceof Error ? err.message : "오류"}`);
+      return;
+    }
     router.push("/work");
   }
 

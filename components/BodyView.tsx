@@ -79,7 +79,8 @@ pre{overflow-x:auto;word-break:break-word;}
 </style>`;
 
 /** Ensure <base href="/"> is the FIRST thing in <head> so relative /images/... paths resolve. */
-const BASE_TAG = `<base href="/">`;
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+const BASE_TAG = `<base href="${BASE_PATH}/">`;
 
 function injectHead(html: string, content: string): string {
   if (/<\/head>/i.test(html)) return html.replace(/<\/head>/i, content + "</head>");

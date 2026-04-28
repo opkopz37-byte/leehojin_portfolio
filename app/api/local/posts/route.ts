@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { readFileSync } from "fs";
 import { join } from "path";
 
+export const dynamic = "force-static";
+
 const POSTS_FILE = join(process.cwd(), "public/data/posts.json");
 
 export async function GET() {

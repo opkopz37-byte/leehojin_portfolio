@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 
+export const dynamic = "force-static";
+
 const DELETED_FILE = join(process.cwd(), "public/data/deleted.json");
 
 export async function GET() {

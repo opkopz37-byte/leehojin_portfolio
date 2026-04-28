@@ -29,7 +29,7 @@ export default function ProjectDetail({
 
   return (
     <article>
-      <header className="px-4 sm:px-6 pt-32 pb-12 sm:pt-40 sm:pb-16">
+      <header className="px-4 sm:px-6 pt-28 pb-8 sm:pt-40 sm:pb-16">
         <div className="mx-auto w-full max-w-none">
           <div className="flex items-center justify-between gap-4 mb-8">
             <Link
@@ -65,26 +65,26 @@ export default function ProjectDetail({
             )}
           </div>
 
-          <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight">
+          <h1 className="text-3xl sm:text-5xl font-semibold tracking-tight">
             {project.title}
           </h1>
-          <p className="mt-6 max-w-2xl text-base sm:text-lg leading-relaxed text-muted">
+          <p className="mt-4 sm:mt-6 max-w-2xl text-sm sm:text-lg leading-relaxed text-muted">
             {project.summary}
           </p>
 
-          <dl className="mt-10 grid gap-6 sm:grid-cols-4 border-t border-border pt-8">
+          <dl className="mt-8 sm:mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-6 border-t border-border pt-6 sm:pt-8">
             <div>
               <dt className="font-mono text-[10px] uppercase tracking-wider text-muted">
                 Role
               </dt>
-              <dd className="mt-1 text-sm">{project.role || "—"}</dd>
+              <dd className="mt-1 text-xs sm:text-sm">{project.role || "—"}</dd>
             </div>
             {project.projectName && (
               <div>
                 <dt className="font-mono text-[10px] uppercase tracking-wider text-muted">
                   Project Name
                 </dt>
-                <dd className="mt-1 text-sm">{project.projectName}</dd>
+                <dd className="mt-1 text-xs sm:text-sm">{project.projectName}</dd>
               </div>
             )}
             {project.subTitle && (
@@ -92,7 +92,7 @@ export default function ProjectDetail({
                 <dt className="font-mono text-[10px] uppercase tracking-wider text-muted">
                   Sub Title
                 </dt>
-                <dd className="mt-1 text-sm">{project.subTitle}</dd>
+                <dd className="mt-1 text-xs sm:text-sm">{project.subTitle}</dd>
               </div>
             )}
             {project.company && (
@@ -100,20 +100,20 @@ export default function ProjectDetail({
                 <dt className="font-mono text-[10px] uppercase tracking-wider text-muted">
                   Company
                 </dt>
-                <dd className="mt-1 text-sm">{project.company}</dd>
+                <dd className="mt-1 text-xs sm:text-sm">{project.company}</dd>
               </div>
             )}
             <div>
               <dt className="font-mono text-[10px] uppercase tracking-wider text-muted">
                 Project date
               </dt>
-              <dd className="mt-1 text-sm">{projectDate || "—"}</dd>
+              <dd className="mt-1 text-xs sm:text-sm">{projectDate || "—"}</dd>
             </div>
             <div>
               <dt className="font-mono text-[10px] uppercase tracking-wider text-muted">
                 Stack
               </dt>
-              <dd className="mt-1 text-sm">
+              <dd className="mt-1 text-xs sm:text-sm leading-relaxed">
                 {project.tags.length ? project.tags.join(" · ") : "—"}
               </dd>
             </div>

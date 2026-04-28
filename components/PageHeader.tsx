@@ -48,24 +48,24 @@ export default function PageHeader({
   if (!hydrated) return null;
 
   return (
-    <header className="px-6 pt-32 pb-12 sm:pt-40 sm:pb-16">
+    <header className="px-4 sm:px-6 pt-28 pb-8 sm:pt-40 sm:pb-16">
       <div className="mx-auto max-w-5xl">
         <Link
           href="/"
-          className="inline-block font-mono text-xs text-muted hover:text-foreground transition mb-8"
+          className="inline-block font-mono text-xs text-muted hover:text-foreground transition mb-6 sm:mb-8"
         >
           ← Back home
         </Link>
-        <p className="font-mono text-sm text-accent mb-3">
+        <p className="font-mono text-xs sm:text-sm text-accent mb-2 sm:mb-3">
           {number} · {label}
         </p>
-        <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight">
+        <h1 className="text-3xl sm:text-5xl font-semibold tracking-tight">
           {admin
             ? <InlineEdit value={title} onSave={(v) => save("title", v)} />
             : title}
         </h1>
         {(description || admin) && (
-          <p className="mt-6 max-w-2xl text-base sm:text-lg leading-relaxed text-muted">
+          <p className="mt-4 sm:mt-6 max-w-2xl text-sm sm:text-lg leading-relaxed text-muted">
             {admin
               ? <InlineEdit value={description} onSave={(v) => save("description", v)} multiline />
               : description}

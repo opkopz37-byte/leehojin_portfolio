@@ -72,18 +72,18 @@ export default function ResumePage() {
         {items.map((it, i) => {
           const upd = makeUpdater(items, save, i);
           return (
-            <li key={i} className="grid gap-2 sm:grid-cols-[180px_1fr] group/entry relative">
-              <div className="font-mono text-xs text-muted pt-1">
+            <li key={i} className="grid gap-1 sm:gap-2 sm:grid-cols-[160px_1fr] group/entry relative">
+              <div className="font-mono text-[11px] sm:text-xs text-muted sm:pt-1">
                 {admin ? <InlineEdit value={it.period} onSave={upd("period")} /> : it.period}
               </div>
               <div>
-                <h3 className="text-base font-semibold">
+                <h3 className="text-sm sm:text-base font-semibold">
                   {admin ? <InlineEdit value={it.role} onSave={upd("role")} /> : it.role}
                 </h3>
-                <p className="text-sm text-muted">
+                <p className="text-xs sm:text-sm text-muted">
                   {admin ? <InlineEdit value={it.company} onSave={upd("company")} /> : it.company}
                 </p>
-                <p className="mt-2 text-sm leading-relaxed text-muted whitespace-pre-wrap">
+                <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm leading-relaxed text-muted whitespace-pre-wrap">
                   {admin ? <InlineEdit value={it.desc} onSave={upd("desc")} multiline /> : it.desc}
                 </p>
               </div>
@@ -118,8 +118,8 @@ export default function ResumePage() {
     <>
       <PageHeader number="03" label="Resume" title="Resume" description="지금까지 거쳐 온 팀과 프로젝트를 시간순으로 정리했습니다." />
 
-      <section className="border-t border-border px-6 py-16 sm:py-24">
-        <div className="mx-auto max-w-5xl grid gap-16">
+      <section className="border-t border-border px-4 sm:px-6 py-10 sm:py-24">
+        <div className="mx-auto max-w-5xl grid gap-10 sm:gap-16">
           <div>
             <h2 className="font-mono text-xs text-muted mb-6">EXPERIENCE</h2>
             <EntryBlock items={exp} save={saveExp} />

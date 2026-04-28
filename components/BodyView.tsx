@@ -12,8 +12,6 @@ type Props = {
   onContentChange?: (html: string) => void;
 };
 
-/** Posts authored before bodyFormat existed may contain a full HTML document.
- *  Detect that and render in the sandbox so it doesn't blow up the page DOM. */
 function detectFormat(source: string): "markdown" | "html" {
   const head = source.trimStart().slice(0, 200).toLowerCase();
   if (head.startsWith("<!doctype html") || head.startsWith("<html")) return "html";
@@ -45,7 +43,6 @@ export default function BodyView({
 
 const RESIZE_SCRIPT = `<script>(function(){function r(){try{var h=Math.max(document.documentElement.scrollHeight,document.body?document.body.scrollHeight:0);parent.postMessage({type:'body-height',h:h},'*');}catch(e){}}window.addEventListener('load',r);if(typeof ResizeObserver!=='undefined'){try{new ResizeObserver(r).observe(document.documentElement);}catch(e){}}setInterval(r,400);setTimeout(r,200);setTimeout(r,1200);})();<\/script>`;
 
-// wysiwygActive data attribute disables click-capture and hover highlights
 const EDITOR_SCRIPT = `<script>(function(){
 function pathOf(el){if(!el||el===document.body)return [];var path=[];while(el&&el!==document.body){var p=el.parentElement;if(!p)return null;var idx=Array.prototype.indexOf.call(p.children,el);if(idx<0)return null;path.unshift(idx);el=p;}return el===document.body?path:null;}
 function tagPathOf(el){var tags=[];while(el&&el!==document.body){tags.unshift(el.tagName.toLowerCase());el=el.parentElement;}return tags;}
@@ -68,10 +65,43 @@ function exit(){document.body.contentEditable='false';delete document.body.datas
 window.addEventListener('message',function(e){if(!e.data)return;if(e.data.type==='wysiwyg-enter')enter();else if(e.data.type==='wysiwyg-exit')exit();});
 })();<\/script>`;
 
+/** Injected last in <head> so it wins over same-specificity post styles. */
+const MOBILE_RESET_STYLE = `<style>
+*,*::before,*::after{box-sizing:border-box;}
+html,body{max-width:100%;overflow-x:hidden;}
+img,video{max-width:100%!important;height:auto!important;}
+table{display:block!important;max-width:100%!important;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+pre{overflow-x:auto;word-break:break-word;}
+@media(max-width:640px){
+  body{padding-left:max(16px,env(safe-area-inset-left))!important;padding-right:max(16px,env(safe-area-inset-right))!important;}
+  img,video{border-radius:6px;}
+}
+</style>`;
+
+/** Ensure <base href="/"> is the FIRST thing in <head> so relative /images/... paths resolve. */
+const BASE_TAG = `<base href="/">`;
+
+function injectHead(html: string, content: string): string {
+  if (/<\/head>/i.test(html)) return html.replace(/<\/head>/i, content + "</head>");
+  if (/<head\b[^>]*>/i.test(html)) return html.replace(/<head\b[^>]*>/i, (m) => m + content);
+  if (/<html\b[^>]*>/i.test(html)) return html.replace(/<html\b[^>]*>/i, (m) => m + "<head>" + content + "</head>");
+  return "<head>" + content + "</head>" + html;
+}
+
 function injectScripts(html: string, scripts: string): string {
   if (/<\/body>/i.test(html)) return html.replace(/<\/body>/i, scripts + "</body>");
   if (/<\/html>/i.test(html)) return html.replace(/<\/html>/i, scripts + "</html>");
   return html + scripts;
+}
+
+function buildSrcDoc(source: string, editorMode: boolean): string {
+  // 1. Inject <base> first (must be first in <head>)
+  let html = injectHead(source, BASE_TAG);
+  // 2. Inject mobile-reset style last in <head> (wins over post's same-specificity rules)
+  html = injectHead(html, MOBILE_RESET_STYLE);
+  // 3. Inject runtime scripts before </body>
+  html = injectScripts(html, RESIZE_SCRIPT + (editorMode ? EDITOR_SCRIPT + WYSIWYG_SCRIPT : ""));
+  return html;
 }
 
 function HtmlSandbox({
@@ -92,10 +122,7 @@ function HtmlSandbox({
   const onContentChangeRef = useRef(onContentChange);
   useEffect(() => { onContentChangeRef.current = onContentChange; });
 
-  const srcDoc = injectScripts(
-    source,
-    RESIZE_SCRIPT + (editorMode ? EDITOR_SCRIPT + WYSIWYG_SCRIPT : ""),
-  );
+  const srcDoc = buildSrcDoc(source, editorMode);
 
   useEffect(() => {
     function onMessage(e: MessageEvent) {

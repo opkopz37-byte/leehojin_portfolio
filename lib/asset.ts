@@ -4,7 +4,7 @@ const basePath =
     : "";
 
 export function asset(path: string): string {
-  if (/^https?:\/\//.test(path)) return path;
+  if (!path || /^(https?:|data:)/.test(path)) return path;
   if (!path.startsWith("/")) return `${basePath}/${path}`;
   return `${basePath}${path}`;
 }

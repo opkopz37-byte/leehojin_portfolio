@@ -8,6 +8,7 @@ import { deleteRemotePost, upsertRemotePost } from "@/lib/githubStorage";
 import { projects, staticPlaceholders, SUB_CATEGORIES, type SubCategory, type Project } from "@/lib/projects";
 import deletedJson from "../../public/data/deleted.json";
 import { useDrafts } from "@/lib/useDrafts";
+import { asset } from "@/lib/asset";
 import { useAdmin } from "@/hooks/useAdmin";
 
 type DeletedRecord = Project & { deletedAt: string };
@@ -243,7 +244,7 @@ export default function WorkPage() {
                   {r.coverImage && (
                     <div className="relative aspect-video overflow-hidden bg-card/50">
                       <img
-                        src={r.coverImage}
+                        src={asset(r.coverImage ?? "")}
                         alt={r.title}
                         loading="lazy"
                         className="w-full h-full object-cover group-hover:scale-105 transition duration-500"

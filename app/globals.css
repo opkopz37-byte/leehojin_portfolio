@@ -36,6 +36,7 @@
 
 /* Explicit light override — wins over @media dark when user toggles light */
 :root[data-theme="light"] {
+  color-scheme: light;
   --background: #fafaf9;
   --foreground: #1c1917;
   --muted: #78716c;

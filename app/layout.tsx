@@ -35,6 +35,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <meta name="color-scheme" content="light dark" />
         {/* Anti-FOUC: set theme before first paint */}
         <script
           dangerouslySetInnerHTML={{

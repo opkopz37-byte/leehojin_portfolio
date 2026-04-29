@@ -10,7 +10,8 @@ export default function ThemeToggle() {
       type="button"
       aria-label="Toggle theme"
       onClick={() => setTheme(resolved === "dark" ? "light" : "dark")}
-      className="inline-flex items-center justify-center w-8 h-8 rounded-md text-muted hover:text-foreground hover:bg-foreground/5 transition"
+      style={{ touchAction: "manipulation" }}
+      className="inline-flex items-center justify-center w-10 h-10 rounded-md text-muted hover:text-foreground hover:bg-foreground/5 transition"
     >
       {resolved === "dark" ? (
         // Sun icon

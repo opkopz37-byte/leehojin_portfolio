@@ -238,6 +238,18 @@ function buildImgTag(
   return `<img src="${src}" alt="${alt}" style="float:${align};margin:${margin};width:${size}%;max-width:${size}%;height:auto;" />`;
 }
 
+function buildVideoTag(
+  src: string,
+  size: 25 | 50 | 75 | 100,
+  align: "left" | "center" | "right",
+): string {
+  if (align === "center") {
+    return `<video src="${src}" controls playsinline style="display:block;margin:1.5rem auto;width:${size}%;max-width:100%;height:auto;"></video>`;
+  }
+  const margin = align === "left" ? "0 1.5rem 1rem 0" : "0 0 1rem 1.5rem";
+  return `<video src="${src}" controls playsinline style="float:${align};margin:${margin};width:${size}%;max-width:${size}%;height:auto;"></video>`;
+}
+
 function slugify(s: string): string {
   return s
     .toLowerCase()
@@ -601,6 +613,12 @@ export default function ProjectForm({
     size: 25 | 50 | 75 | 100,
     align: "left" | "center" | "right",
   ): Promise<string | null> {
+    const isVideo = file.type.startsWith("video/");
+    const isImage = file.type.startsWith("image/");
+    if (!isVideo && !isImage) {
+      alert(`${file.name}: 이미지/영상만 지원합니다.`);
+      return null;
+    }
     if (file.size > MAX_FILE_BYTES) {
       alert(`${(file.size / 1024 / 1024).toFixed(1)}MB — 10MB 이하 파일만 가능합니다.`);
       return null;
@@ -610,15 +628,17 @@ export default function ProjectForm({
       setImageUploading(true);
       let url = dataUrl;
       try {
-        url = await uploadImage(file.name, dataUrl);
+        url = isVideo
+          ? await uploadImage(file.name, dataUrl, file.type)
+          : await uploadImage(file.name, dataUrl);
       } catch (err) {
         console.error(err);
       } finally {
         setImageUploading(false);
       }
-      return buildImgTag(url, file.name, size, align);
+      return isVideo ? buildVideoTag(url, size, align) : buildImgTag(url, file.name, size, align);
     } catch {
-      alert("이미지 읽기 실패");
+      alert(`${file.name} 읽기 실패`);
       return null;
     }
   }
@@ -1025,7 +1045,7 @@ export default function ProjectForm({
                 <p className="font-mono text-[11px] text-muted">
                   {wysiwyg
                     ? <>미리보기에서 직접 텍스트를 편집 중입니다. 완료하면 <span className="text-accent">편집 완료</span>를 누르세요.</>
-                    : <><span className="text-accent">아무 요소</span>나 클릭 → 이미지 삽입·교체·삭제. 직접 편집 버튼으로 텍스트도 수정할 수 있습니다.</>
+                    : <><span className="text-accent">아무 요소</span>나 클릭 → 이미지/영상 삽입·교체·삭제. 직접 편집 버튼으로 텍스트도 수정할 수 있습니다.</>
                   }
                   {imageUploading && <span className="ml-2 text-accent">⏳ 업로드 중…</span>}
                 </p>
@@ -1047,14 +1067,14 @@ export default function ProjectForm({
                       onClick={() => previewImageInputRef.current?.click()}
                       className="rounded-full border border-accent/40 bg-accent/10 text-accent px-3 py-1 text-xs font-mono hover:bg-accent/20 transition"
                     >
-                      + 이미지 추가
+                      + 이미지/영상 추가
                     </button>
                   )}
                 </div>
                 <input
                   ref={previewImageInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/*,video/*"
                   hidden
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
@@ -1454,7 +1474,7 @@ function ElementEditModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-sm font-semibold mb-2">
-          {edit.isImg ? "이미지 편집 / 추가" : "이미지 추가"}
+          {edit.isImg ? "이미지 편집 / 추가" : "이미지·영상 추가"}
         </h3>
         <p className="font-mono text-[11px] text-muted mb-5 break-words">
           위치: <span className="text-accent">{breadcrumb}</span>
@@ -1499,8 +1519,8 @@ function ElementEditModal({
         </div>
 
         <input ref={replaceRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onReplace(f); }} />
-        <input ref={beforeRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onInsert(f, "before", size, align); }} />
-        <input ref={afterRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onInsert(f, "after", size, align); }} />
+        <input ref={beforeRef} type="file" accept="image/*,video/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onInsert(f, "before", size, align); }} />
+        <input ref={afterRef} type="file" accept="image/*,video/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onInsert(f, "after", size, align); }} />
 
         <div className="flex flex-col gap-2">
           <div className="grid grid-cols-2 gap-2">

@@ -55,13 +55,13 @@
       "role": "경일대학교",
       "company": "사진영상학부 학사",
       "period": "2014.03 — 2020.02",
-      "desc": "뉴미디어"
+      "desc": "-"
     },
     {
       "role": "강서고등학교",
       "company": "인문계열",
       "period": "2011.03 — 2014.02",
-      "desc": "설명"
+      "desc": "-"
     }
   ],
   "portfolio.resume.awards": [
@@ -130,5 +130,13 @@
   "portfolio.header.resume": {
     "description": "아트와 기술의 경계에서 쌓아온 경험들입니다.",
     "title": "Resume"
-  }
+  },
+  "portfolio.resume.training": [
+    {
+      "role": "패스트캠퍼스 언리얼 포트폴리오",
+      "company": "기관명",
+      "period": "2023",
+      "desc": "이수 내용 설명."
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 type Theme = "system" | "light" | "dark";
 type Resolved = "light" | "dark";
@@ -21,29 +21,48 @@ function applyTheme(t: Theme): Resolved {
   return t;
 }
 
+function readStoredTheme(): Theme {
+  try {
+    const v = localStorage.getItem("portfolio.theme");
+    return v === "light" || v === "dark" || v === "system" ? v : "system";
+  } catch {
+    return "system";
+  }
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>("system");
   const [resolved, setResolved] = useState<Resolved>("dark");
-  const userChanged = useRef(false);
 
+  // Init from storage and apply to <html> on mount.
   useEffect(() => {
-    const stored = localStorage.getItem("portfolio.theme") as Theme | null;
-    const t: Theme = (stored === "light" || stored === "dark" || stored === "system") ? stored : "system";
-    setResolved(applyTheme(t));
+    const t = readStoredTheme();
     setThemeState(t);
+    setResolved(applyTheme(t));
   }, []);
 
+  // React to OS theme changes when in "system" mode.
   useEffect(() => {
-    if (!userChanged.current) return;
-    setResolved(applyTheme(theme));
-    localStorage.setItem("portfolio.theme", theme);
-    userChanged.current = false;
+    if (theme !== "system") return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = () => setResolved(applyTheme("system"));
+    if (mq.addEventListener) mq.addEventListener("change", onChange);
+    else mq.addListener(onChange); // older Safari fallback
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", onChange);
+      else mq.removeListener(onChange);
+    };
   }, [theme]);
 
-  function setTheme(t: Theme) {
-    userChanged.current = true;
+  const setTheme = useCallback((t: Theme) => {
     setThemeState(t);
-  }
+    setResolved(applyTheme(t));
+    try {
+      localStorage.setItem("portfolio.theme", t);
+    } catch {
+      /* private mode / quota — ignore */
+    }
+  }, []);
 
   return (
     <Ctx.Provider value={{ theme, resolved, setTheme }}>

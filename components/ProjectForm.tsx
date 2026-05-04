@@ -53,6 +53,19 @@ const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 const IMG_TAG_RE = /<img\b[^>]*>/gi;
 
+function buildTableHtml(rows: number, cols: number, hasHeader: boolean): string {
+  const th = (i: number) =>
+    `<th style="border:1px solid #ddd;padding:8px 12px;background:rgba(127,127,127,0.12);text-align:left;">제목 ${i + 1}</th>`;
+  const td = '<td style="border:1px solid #ddd;padding:8px 12px;">셀</td>';
+  const headerHtml = hasHeader
+    ? `<thead><tr>${Array.from({ length: cols }, (_, i) => th(i)).join("")}</tr></thead>`
+    : "";
+  const bodyRows = Math.max(0, rows - (hasHeader ? 1 : 0));
+  const row = `<tr>${Array.from({ length: cols }, () => td).join("")}</tr>`;
+  const bodyHtml = `<tbody>${Array.from({ length: bodyRows }, () => row).join("")}</tbody>`;
+  return `<table style="border-collapse:collapse;margin:1.5rem 0;width:100%;">${headerHtml}${bodyHtml}</table>`;
+}
+
 function replaceNthImgSrc(html: string, n: number, newSrc: string): string {
   let i = 0;
   return html.replace(IMG_TAG_RE, (tag) => {
@@ -329,6 +342,10 @@ export default function ProjectForm({
   const bodyRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const coverInputRef = useRef<HTMLInputElement | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  function sendTableOp(op: string, args: Record<string, unknown> = {}) {
+    iframeRef.current?.contentWindow?.postMessage({ type: "table-op", op, ...args }, "*");
+  }
   const [s, setS] = useState<FormState>(() => toFormState(initial));
   const [bodyTab, setBodyTab] = useState<"write" | "preview">("write");
   const [slugDirty, setSlugDirty] = useState(mode === "edit");
@@ -347,10 +364,21 @@ export default function ProjectForm({
     path: number[];
     tagPath: string[];
     isImg: boolean;
+    isVideo: boolean;
     imgIndex: number;
     imgSrc: string;
+    inTable: boolean;
+    tablePath: number[] | null;
+    cellRowIdx: number;
+    cellColIdx: number;
   } | null>(null);
   const [wysiwyg, setWysiwyg] = useState(false);
+  const [tableModal, setTableModal] = useState(false);
+  const [tableInsertTarget, setTableInsertTarget] = useState<
+    | { mode: "cursor" }
+    | { mode: "path"; path: number[]; position: "before" | "after" }
+    | null
+  >(null);
 
   useEffect(() => {
     if (slugDirty) return;
@@ -590,18 +618,35 @@ export default function ProjectForm({
         path?: number[];
         tagPath?: string[];
         isImg?: boolean;
+        isVideo?: boolean;
         imgIndex?: number;
         imgSrc?: string;
+        inTable?: boolean;
+        tablePath?: number[] | null;
+        cellRowIdx?: number;
+        cellColIdx?: number;
       } | null;
-      if (!data || data.type !== "editor-element-click") return;
+      if (!data) return;
       if (s.bodyFormat !== "html" || bodyTab !== "preview") return;
+      if (data.type === "editor-html-update") {
+        if (typeof (data as { html?: unknown }).html === "string") {
+          setS((prev) => ({ ...prev, body: (data as { html: string }).html }));
+        }
+        return;
+      }
+      if (data.type !== "editor-element-click") return;
       if (!Array.isArray(data.path) || data.path.length === 0) return;
       setPreviewEdit({
         path: data.path,
         tagPath: Array.isArray(data.tagPath) ? data.tagPath : [],
         isImg: !!data.isImg,
+        isVideo: !!data.isVideo,
         imgIndex: typeof data.imgIndex === "number" ? data.imgIndex : -1,
         imgSrc: typeof data.imgSrc === "string" ? data.imgSrc : "",
+        inTable: !!data.inTable,
+        tablePath: Array.isArray(data.tablePath) ? data.tablePath : null,
+        cellRowIdx: typeof data.cellRowIdx === "number" ? data.cellRowIdx : -1,
+        cellColIdx: typeof data.cellColIdx === "number" ? data.cellColIdx : -1,
       });
     }
     window.addEventListener("message", onMessage);
@@ -695,6 +740,34 @@ export default function ProjectForm({
         />
       )}
 
+      {tableModal && (
+        <TableInsertModal
+          onInsert={(html) => {
+            if (tableInsertTarget?.mode === "path") {
+              set(
+                "body",
+                insertAtElementPath(
+                  s.body,
+                  tableInsertTarget.path,
+                  tableInsertTarget.position,
+                  html,
+                ),
+              );
+              setBodyTab("preview");
+            } else {
+              insertSnippet(html);
+              setBodyTab("preview");
+            }
+            setTableModal(false);
+            setTableInsertTarget(null);
+          }}
+          onCancel={() => {
+            setTableModal(false);
+            setTableInsertTarget(null);
+          }}
+        />
+      )}
+
       {pendingImages.length > 0 && (
         <ImageOptionsModal
           src={pendingImages[0].url}
@@ -729,10 +802,73 @@ export default function ProjectForm({
             setPreviewEdit(null);
             if (idx >= 0) set("body", removeNthImg(s.body, idx));
           }}
+          onDeleteVideo={() => {
+            const path = previewEdit.path;
+            if (!path) return;
+            if (!confirm("이 영상을 삭제할까요?")) return;
+            setPreviewEdit(null);
+            iframeRef.current?.contentWindow?.postMessage(
+              { type: "delete-element", elementPath: path },
+              "*",
+            );
+          }}
           onInsert={async (file, position, size, align) => {
             const path = previewEdit.path;
             setPreviewEdit(null);
             await insertAtPath(path, position, file, size, align);
+          }}
+          onInsertTable={(position) => {
+            const path = previewEdit.path;
+            setPreviewEdit(null);
+            setTableInsertTarget({ mode: "path", path, position });
+            setTableModal(true);
+          }}
+          onDeleteTable={() => {
+            const tablePath = previewEdit.tablePath;
+            if (!tablePath) return;
+            if (!confirm("이 표를 삭제할까요?")) return;
+            setPreviewEdit(null);
+            sendTableOp("deleteTable", { tablePath });
+          }}
+          onInsertRow={(position) => {
+            const tp = previewEdit.tablePath;
+            if (!tp) return;
+            const ri = previewEdit.cellRowIdx;
+            setPreviewEdit(null);
+            sendTableOp("insertRow", {
+              tablePath: tp,
+              cellRowIdx: ri,
+              position,
+            });
+          }}
+          onDeleteRow={() => {
+            const tp = previewEdit.tablePath;
+            if (!tp) return;
+            const ri = previewEdit.cellRowIdx;
+            if (!confirm(ri >= 0 ? "이 행을 삭제할까요?" : "마지막 행을 삭제할까요?"))
+              return;
+            setPreviewEdit(null);
+            sendTableOp("deleteRow", { tablePath: tp, cellRowIdx: ri });
+          }}
+          onInsertCol={(position) => {
+            const tp = previewEdit.tablePath;
+            if (!tp) return;
+            const ci = previewEdit.cellColIdx;
+            setPreviewEdit(null);
+            sendTableOp("insertCol", {
+              tablePath: tp,
+              cellColIdx: ci,
+              position,
+            });
+          }}
+          onDeleteCol={() => {
+            const tp = previewEdit.tablePath;
+            if (!tp) return;
+            const ci = previewEdit.cellColIdx;
+            if (!confirm(ci >= 0 ? "이 열을 삭제할까요?" : "마지막 열을 삭제할까요?"))
+              return;
+            setPreviewEdit(null);
+            sendTableOp("deleteCol", { tablePath: tp, cellColIdx: ci });
           }}
           onCancel={() => setPreviewEdit(null)}
         />
@@ -976,29 +1112,39 @@ export default function ProjectForm({
                   e.target.value = "";
                 }}
               />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="rounded-full border border-border px-3 py-1 text-xs font-mono hover:border-foreground transition"
+                title="이미지·영상을 본문에 첨부합니다"
+              >
+                📎 파일 첨부
+              </button>
               {s.bodyFormat === "markdown" && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="rounded-full border border-border px-3 py-1 text-xs font-mono hover:border-foreground transition"
-                  >
-                    📎 파일 첨부
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      insertSnippet(
-                        "```html-embed\n<!doctype html>\n<html>\n<head>\n<style>\n  body { font-family: sans-serif; padding: 16px; }\n</style>\n</head>\n<body>\n  <h2>HTML 블록</h2>\n  <p>이 안에서 HTML / CSS / JavaScript 자유롭게 사용할 수 있어요.</p>\n  <script>\n    console.log('embed loaded');\n  </script>\n</body>\n</html>\n```",
-                      )
-                    }
-                    className="rounded-full border border-border px-3 py-1 text-xs font-mono hover:border-foreground transition"
-                    title="현재 커서 위치에 HTML/CSS/JS 블록을 삽입합니다"
-                  >
-                    {"</> HTML 블록"}
-                  </button>
-                </>
+                <button
+                  type="button"
+                  onClick={() =>
+                    insertSnippet(
+                      "```html-embed\n<!doctype html>\n<html>\n<head>\n<style>\n  body { font-family: sans-serif; padding: 16px; }\n</style>\n</head>\n<body>\n  <h2>HTML 블록</h2>\n  <p>이 안에서 HTML / CSS / JavaScript 자유롭게 사용할 수 있어요.</p>\n  <script>\n    console.log('embed loaded');\n  </script>\n</body>\n</html>\n```",
+                    )
+                  }
+                  className="rounded-full border border-border px-3 py-1 text-xs font-mono hover:border-foreground transition"
+                  title="현재 커서 위치에 HTML/CSS/JS 블록을 삽입합니다"
+                >
+                  {"</> HTML 블록"}
+                </button>
               )}
+              <button
+                type="button"
+                onClick={() => {
+                  setTableInsertTarget({ mode: "cursor" });
+                  setTableModal(true);
+                }}
+                className="rounded-full border border-border px-3 py-1 text-xs font-mono hover:border-foreground transition"
+                title="행과 열을 정해 빈 표를 삽입합니다"
+              >
+                📊 표 삽입
+              </button>
               <PaneToggle value={bodyTab} onChange={setBodyTab} />
             </div>
           </div>
@@ -1008,10 +1154,10 @@ export default function ProjectForm({
               ref={bodyRef}
               value={s.body}
               onChange={(e) => set("body", e.target.value)}
-              onPaste={s.bodyFormat === "markdown" ? onPaste : undefined}
-              onDrop={s.bodyFormat === "markdown" ? onDrop : undefined}
-              onDragOver={s.bodyFormat === "markdown" ? onDragOver : undefined}
-              onDragLeave={s.bodyFormat === "markdown" ? onDragLeave : undefined}
+              onPaste={onPaste}
+              onDrop={onDrop}
+              onDragOver={onDragOver}
+              onDragLeave={onDragLeave}
               spellCheck={false}
               rows={20}
               placeholder={
@@ -1029,13 +1175,11 @@ export default function ProjectForm({
             />
             <p className="mt-2 font-mono text-[11px] text-muted">
               {s.bodyFormat === "markdown" ? (
-                <>
-                  이미지·GIF를 위로 끌어다 놓거나 붙여넣기(⌘V)하면 자동으로 GitHub에 업로드됩니다.
-                  {imageUploading && <span className="ml-2 text-accent">⏳ 이미지 업로드 중…</span>}
-                </>
+                <>이미지·GIF를 위로 끌어다 놓거나 붙여넣기(⌘V)하면 자동으로 GitHub에 업로드됩니다.</>
               ) : (
-                <>HTML/CSS/JS 모드 — sandbox iframe 안에서 실행됩니다. 외부 사이트 이동(target=_top) 등은 제한됩니다.</>
+                <>HTML/CSS/JS 모드 — 이미지·영상을 끌어다 놓거나 붙여넣기(⌘V)도 가능합니다. sandbox iframe 안에서 실행됩니다.</>
               )}
+              {imageUploading && <span className="ml-2 text-accent">⏳ 이미지 업로드 중…</span>}
             </p>
           </div>
 
@@ -1092,6 +1236,9 @@ export default function ProjectForm({
                   editorMode={s.bodyFormat === "html"}
                   wysiwyg={wysiwyg && s.bodyFormat === "html"}
                   onContentChange={(html) => set("body", html)}
+                  onIframeReady={(el) => {
+                    iframeRef.current = el;
+                  }}
                 />
               ) : (
                 <p className="text-sm text-muted">본문이 비어 있습니다.</p>
@@ -1441,9 +1588,27 @@ function ElementEditModal({
   onReplace,
   onDelete,
   onInsert,
+  onInsertTable,
+  onDeleteTable,
+  onInsertRow,
+  onDeleteRow,
+  onInsertCol,
+  onDeleteCol,
+  onDeleteVideo,
   onCancel,
 }: {
-  edit: { path: number[]; tagPath: string[]; isImg: boolean; imgIndex: number; imgSrc: string };
+  edit: {
+    path: number[];
+    tagPath: string[];
+    isImg: boolean;
+    isVideo: boolean;
+    imgIndex: number;
+    imgSrc: string;
+    inTable: boolean;
+    tablePath: number[] | null;
+    cellRowIdx: number;
+    cellColIdx: number;
+  };
   onReplace: (file: File) => void | Promise<void>;
   onDelete: () => void;
   onInsert: (
@@ -1452,6 +1617,13 @@ function ElementEditModal({
     size: 25 | 50 | 75 | 100,
     align: "left" | "center" | "right",
   ) => void | Promise<void>;
+  onInsertTable: (position: "before" | "after") => void;
+  onDeleteTable: () => void;
+  onInsertRow: (position: "before" | "after") => void;
+  onDeleteRow: () => void;
+  onInsertCol: (position: "before" | "after") => void;
+  onDeleteCol: () => void;
+  onDeleteVideo: () => void;
   onCancel: () => void;
 }) {
   const [size, setSize] = React.useState<25 | 50 | 75 | 100>(100);
@@ -1474,7 +1646,7 @@ function ElementEditModal({
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-sm font-semibold mb-2">
-          {edit.isImg ? "이미지 편집 / 추가" : "이미지·영상 추가"}
+          {edit.isImg ? "이미지 편집 / 추가" : edit.isVideo ? "영상 편집 / 추가" : "이미지·영상 추가"}
         </h3>
         <p className="font-mono text-[11px] text-muted mb-5 break-words">
           위치: <span className="text-accent">{breadcrumb}</span>
@@ -1523,6 +1695,7 @@ function ElementEditModal({
         <input ref={afterRef} type="file" accept="image/*,video/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onInsert(f, "after", size, align); }} />
 
         <div className="flex flex-col gap-2">
+          <p className="font-mono text-[10px] uppercase tracking-wider text-muted">이미지·영상</p>
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
@@ -1557,12 +1730,259 @@ function ElementEditModal({
               </button>
             </>
           )}
+          {edit.isVideo && (
+            <button
+              type="button"
+              onClick={onDeleteVideo}
+              className="w-full rounded-full border border-red-500/40 text-red-500 px-4 py-2 text-sm font-medium hover:bg-red-500 hover:text-white hover:border-red-500 transition"
+            >
+              🗑 이 영상 삭제
+            </button>
+          )}
+
+          <p className="mt-2 font-mono text-[10px] uppercase tracking-wider text-muted">
+            표 {edit.inTable ? (edit.cellRowIdx >= 0 ? "(이 셀 기준)" : "(맨 끝 기준)") : ""}
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => onInsertTable("before")}
+              className="rounded-full border border-border px-3 py-2 text-sm font-medium hover:border-foreground transition"
+            >
+              📊 표 위에 새 표
+            </button>
+            <button
+              type="button"
+              onClick={() => onInsertTable("after")}
+              className="rounded-full border border-border px-3 py-2 text-sm font-medium hover:border-foreground transition"
+            >
+              📊 표 아래에 새 표
+            </button>
+          </div>
+
+          {edit.inTable && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onInsertRow("before")}
+                  className="rounded-full border border-border px-3 py-2 text-sm font-medium hover:border-foreground transition"
+                >
+                  ↑ 위에 행 추가
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onInsertRow("after")}
+                  className="rounded-full border border-border px-3 py-2 text-sm font-medium hover:border-foreground transition"
+                >
+                  ↓ 아래에 행 추가
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onInsertCol("before")}
+                  className="rounded-full border border-border px-3 py-2 text-sm font-medium hover:border-foreground transition"
+                >
+                  ← 왼쪽에 열 추가
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onInsertCol("after")}
+                  className="rounded-full border border-border px-3 py-2 text-sm font-medium hover:border-foreground transition"
+                >
+                  → 오른쪽에 열 추가
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={onDeleteRow}
+                  className="rounded-full border border-red-500/40 text-red-500 px-3 py-2 text-sm font-medium hover:bg-red-500 hover:text-white hover:border-red-500 transition"
+                >
+                  🗑 행 삭제
+                </button>
+                <button
+                  type="button"
+                  onClick={onDeleteCol}
+                  className="rounded-full border border-red-500/40 text-red-500 px-3 py-2 text-sm font-medium hover:bg-red-500 hover:text-white hover:border-red-500 transition"
+                >
+                  🗑 열 삭제
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={onDeleteTable}
+                className="w-full rounded-full border border-red-500/40 text-red-500 px-4 py-2 text-sm font-medium hover:bg-red-500 hover:text-white hover:border-red-500 transition"
+              >
+                🗑 표 전체 삭제
+              </button>
+            </>
+          )}
           <button
             type="button"
             onClick={onCancel}
             className="w-full rounded-full border border-border px-4 py-2 text-sm hover:border-foreground transition"
           >
             취소
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TableInsertModal({
+  onInsert,
+  onCancel,
+}: {
+  onInsert: (html: string) => void;
+  onCancel: () => void;
+}) {
+  const [rows, setRows] = React.useState(3);
+  const [cols, setCols] = React.useState(3);
+  const [hasHeader, setHasHeader] = React.useState(true);
+  const clamp = (n: number) => Math.max(1, Math.min(20, Math.floor(n) || 1));
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"
+      onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="bg-card border border-border rounded-2xl max-w-md w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-sm font-semibold mb-1">표 삽입</h3>
+        <p className="font-mono text-[11px] text-muted mb-4">
+          행과 열을 정한 뒤 삽입하세요. 셀 내용은 미리보기의 “직접 편집”에서 수정할 수 있습니다.
+        </p>
+
+        <div className="mb-5 rounded-lg border border-border bg-background p-3 overflow-x-auto">
+          <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 12 }}>
+            {hasHeader && (
+              <thead>
+                <tr>
+                  {Array.from({ length: cols }, (_, i) => (
+                    <th
+                      key={i}
+                      style={{
+                        border: "1px solid #ccc",
+                        padding: "4px 8px",
+                        background: "rgba(127,127,127,0.15)",
+                        textAlign: "left",
+                      }}
+                    >
+                      제목 {i + 1}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+            )}
+            <tbody>
+              {Array.from(
+                { length: Math.max(0, rows - (hasHeader ? 1 : 0)) },
+                (_, r) => (
+                  <tr key={r}>
+                    {Array.from({ length: cols }, (_, c) => (
+                      <td key={c} style={{ border: "1px solid #ccc", padding: "4px 8px" }}>
+                        셀
+                      </td>
+                    ))}
+                  </tr>
+                ),
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <label className="block">
+            <span className="block font-mono text-[10px] uppercase tracking-wider text-muted mb-1.5">
+              행
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setRows((r) => clamp(r - 1))}
+                className="w-8 h-8 rounded-md border border-border hover:border-foreground text-sm"
+              >
+                −
+              </button>
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={rows}
+                onChange={(e) => setRows(clamp(Number(e.target.value)))}
+                className="flex-1 rounded-md border border-border bg-card px-2 py-1.5 text-sm text-center outline-none focus:border-foreground"
+              />
+              <button
+                type="button"
+                onClick={() => setRows((r) => clamp(r + 1))}
+                className="w-8 h-8 rounded-md border border-border hover:border-foreground text-sm"
+              >
+                +
+              </button>
+            </div>
+          </label>
+          <label className="block">
+            <span className="block font-mono text-[10px] uppercase tracking-wider text-muted mb-1.5">
+              열
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setCols((c) => clamp(c - 1))}
+                className="w-8 h-8 rounded-md border border-border hover:border-foreground text-sm"
+              >
+                −
+              </button>
+              <input
+                type="number"
+                min={1}
+                max={20}
+                value={cols}
+                onChange={(e) => setCols(clamp(Number(e.target.value)))}
+                className="flex-1 rounded-md border border-border bg-card px-2 py-1.5 text-sm text-center outline-none focus:border-foreground"
+              />
+              <button
+                type="button"
+                onClick={() => setCols((c) => clamp(c + 1))}
+                className="w-8 h-8 rounded-md border border-border hover:border-foreground text-sm"
+              >
+                +
+              </button>
+            </div>
+          </label>
+        </div>
+
+        <label className="flex items-center gap-2 mb-6 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={hasHeader}
+            onChange={(e) => setHasHeader(e.target.checked)}
+            className="w-4 h-4 accent-orange-500"
+          />
+          <span className="text-sm">첫 행을 헤더로 사용</span>
+        </label>
+
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-full border border-border px-4 py-2 text-sm hover:border-foreground transition"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            onClick={() => onInsert(buildTableHtml(rows, cols, hasHeader))}
+            className="rounded-full bg-foreground text-background px-5 py-2 text-sm font-medium hover:opacity-90 transition"
+          >
+            삽입
           </button>
         </div>
       </div>

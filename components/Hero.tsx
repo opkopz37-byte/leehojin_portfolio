@@ -7,6 +7,7 @@ import { siteConfig } from "@/lib/config";
 import { getMergedConfig, setOverride } from "@/lib/siteOverrides";
 import { useAdmin } from "@/hooks/useAdmin";
 import InlineEdit from "@/components/InlineEdit";
+import { asset } from "@/lib/asset";
 
 const slideImages = projects
   .map((p) => ({ src: p.coverImage, title: p.title }))
@@ -42,7 +43,7 @@ export default function Hero() {
           {slideImages.map(({ src, title }, i) => (
             <img
               key={src}
-              src={src}
+              src={asset(src)}
               alt={title}
               className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
                 i === idx ? "opacity-100" : "opacity-0"
@@ -106,10 +107,10 @@ export default function Hero() {
             View Work →
           </Link>
           <Link
-            href="/contact"
+            href="/about"
             className="inline-flex items-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-medium hover:border-foreground transition"
           >
-            Get in touch
+            About me
           </Link>
         </div>
       </div>

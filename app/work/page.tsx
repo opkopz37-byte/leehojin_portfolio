@@ -310,7 +310,7 @@ export default function WorkPage() {
                       </span>
                     )}
                     <div className="flex items-start justify-between gap-2 mb-2 sm:mb-3">
-                      <h3 className="text-xs sm:text-lg font-semibold leading-tight">
+                      <h3 className="text-xs sm:text-lg font-semibold leading-tight transition-transform duration-200 origin-left group-hover:scale-[1.04]">
                         {r.title || "(제목 없음)"}
                       </h3>
                       <div className="hidden sm:flex flex-col items-end gap-1 shrink-0">

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { projects } from "@/lib/projects";
+import { asset } from "@/lib/asset";
 
 const previewExpertise = [
   "Shader Development",
@@ -10,7 +11,14 @@ const previewExpertise = [
 ];
 
 export default function LandingPreview() {
-  const featured = projects.filter((p) => p.coverImage).slice(0, 3);
+  const featured = [...projects]
+    .filter((p) => p.coverImage)
+    .sort((a, b) => {
+      const da = a.endDate ?? a.startDate ?? "";
+      const db = b.endDate ?? b.startDate ?? "";
+      return db.localeCompare(da);
+    })
+    .slice(0, 3);
 
   return (
     <>
@@ -75,7 +83,7 @@ export default function LandingPreview() {
                   >
                     <div className="aspect-video overflow-hidden bg-card/50">
                       <img
-                        src={p.coverImage!}
+                        src={asset(p.coverImage!)}
                         alt={p.title}
                         loading="lazy"
                         className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
@@ -85,7 +93,7 @@ export default function LandingPreview() {
                       <p className="mb-1 font-mono text-[10px] uppercase tracking-wider text-muted">
                         {p.category}
                       </p>
-                      <h3 className="text-sm font-semibold leading-tight">
+                      <h3 className="text-sm font-semibold leading-tight transition-transform duration-200 origin-left group-hover:scale-[1.04]">
                         {p.title}
                       </h3>
                     </div>
@@ -101,46 +109,6 @@ export default function LandingPreview() {
         </div>
       </section>
 
-      {/* Resume + Contact */}
-      <section className="border-t border-border px-6 py-20 sm:py-24">
-        <div className="mx-auto grid max-w-5xl gap-6 sm:grid-cols-2">
-          <Link
-            href="/resume"
-            className="group flex flex-col justify-between gap-6 rounded-2xl border border-border bg-card p-6 transition hover:border-foreground sm:p-8"
-          >
-            <div>
-              <p className="mb-2 font-mono text-xs text-accent">03 · Resume</p>
-              <h3 className="text-xl font-semibold tracking-tight">
-                경력과 학력
-              </h3>
-              <p className="mt-3 text-sm leading-relaxed text-muted">
-                지금까지 거쳐 온 팀과 프로젝트를 시간순으로 정리했습니다.
-              </p>
-            </div>
-            <span className="font-mono text-xs text-muted transition group-hover:text-foreground">
-              Resume 보기 →
-            </span>
-          </Link>
-
-          <Link
-            href="/contact"
-            className="group flex flex-col justify-between gap-6 rounded-2xl border border-border bg-card p-6 transition hover:border-foreground sm:p-8"
-          >
-            <div>
-              <p className="mb-2 font-mono text-xs text-accent">04 · Contact</p>
-              <h3 className="text-xl font-semibold tracking-tight">
-                함께 일하기
-              </h3>
-              <p className="mt-3 text-sm leading-relaxed text-muted">
-                협업, R&amp;D, 컨설팅 문의를 받습니다. 편하게 연락 주세요.
-              </p>
-            </div>
-            <span className="font-mono text-xs text-muted transition group-hover:text-foreground">
-              Contact →
-            </span>
-          </Link>
-        </div>
-      </section>
     </>
   );
 }

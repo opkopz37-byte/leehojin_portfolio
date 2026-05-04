@@ -138,5 +138,11 @@
       "period": "2023",
       "desc": "이수 내용 설명."
     }
-  ]
+  ],
+  "portfolio.resume.collapsed": true,
+  "portfolio.about.files": [],
+  "portfolio.about.collapsed.expertise": false,
+  "portfolio.about.collapsed.intro": true,
+  "portfolio.about.collapsed.downloads": true,
+  "portfolio.about.collapsed.stack": true
 }

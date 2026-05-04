@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import MarkdownView from "@/components/MarkdownView";
+import { rewriteHtmlAssetPaths } from "@/lib/asset";
 
 type Props = {
   source: string;
@@ -179,6 +180,9 @@ function injectScripts(html: string, scripts: string): string {
 function buildSrcDoc(source: string, editorMode: boolean): string {
   // 0. Strip any stale runtime that may have been persisted into the body
   let html = stripInjectedRuntime(source);
+  // 0b. Rewrite root-relative asset URLs (/images/foo, /videos/foo) so they
+  //     resolve against the deploy basePath. <base> doesn't help these.
+  html = rewriteHtmlAssetPaths(html);
   // 1. Inject <base> first (must be first in <head>)
   html = injectHead(html, BASE_TAG);
   // 2. Inject mobile-reset style last in <head> (wins over post's same-specificity rules)

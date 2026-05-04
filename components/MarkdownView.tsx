@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { renderMarkdown } from "@/lib/markdown";
+import { rewriteHtmlAssetPaths } from "@/lib/asset";
 
 export default function MarkdownView({
   source,
@@ -11,7 +12,7 @@ export default function MarkdownView({
   className?: string;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const html = renderMarkdown(source);
+  const html = rewriteHtmlAssetPaths(renderMarkdown(source));
 
   useEffect(() => {
     function onMessage(e: MessageEvent) {

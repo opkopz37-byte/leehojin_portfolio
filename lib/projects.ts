@@ -1,8 +1,21 @@
 import type { Block } from "./blocks";
 import postsJson from "../public/data/posts.json";
 
-export const SUB_CATEGORIES = ["TECH", "LEVEL", "LIGHTING", "WEB"] as const;
+export const SUB_CATEGORIES_BY_MAIN = {
+  Project: ["TECH", "LEVEL", "LIGHTING", "WEB"],
+  Personal: ["CHALLENGE", "LEVEL", "LIGHTING"],
+} as const;
+const _ALL_SUBS = Array.from(
+  new Set<string>([...SUB_CATEGORIES_BY_MAIN.Project, ...SUB_CATEGORIES_BY_MAIN.Personal]),
+) as readonly string[];
+export const SUB_CATEGORIES = _ALL_SUBS as readonly ("TECH" | "LEVEL" | "LIGHTING" | "WEB" | "CHALLENGE")[];
 export type SubCategory = (typeof SUB_CATEGORIES)[number];
+
+export function subsForMain(main: "All" | "Project" | "Personal"): readonly SubCategory[] {
+  if (main === "Project") return SUB_CATEGORIES_BY_MAIN.Project;
+  if (main === "Personal") return SUB_CATEGORIES_BY_MAIN.Personal;
+  return SUB_CATEGORIES;
+}
 
 export type MediaItem =
   | {

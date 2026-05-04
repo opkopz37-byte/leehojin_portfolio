@@ -99,7 +99,7 @@
     },
     {
       "title": "Lighting Quality + Performance",
-      "desc": "비주얼을 타협하지 않으면서 퍼포먼스를 개선합니다. Emissive GI 시스템, Spot Light 중심 구조 재설계, 인스턴싱 기반 자산 관리로 측정 가능한 결과를 만듭니다."
+      "desc": "비주얼을 타협하며 퍼포먼스를 개선합니다. Emissive GI 시스템, Spot Light 중심 구조 재설계, 인스턴싱 기반 자산 관리로 측정 가능한 결과를 만듭니다."
     },
     {
       "title": "Automation Tool Development",

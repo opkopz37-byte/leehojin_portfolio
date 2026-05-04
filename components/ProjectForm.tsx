@@ -13,7 +13,7 @@ import React, {
 import BodyView from "@/components/BodyView";
 import { deleteDraft, saveDraft } from "@/lib/draftStorage";
 import { upsertRemotePost, deleteRemotePost, uploadImage } from "@/lib/githubStorage";
-import { SUB_CATEGORIES, type Project, type SubCategory } from "@/lib/projects";
+import { subsForMain, type Project, type SubCategory } from "@/lib/projects";
 
 type FormState = {
   slug: string;
@@ -264,13 +264,18 @@ function buildVideoTag(
 }
 
 function slugify(s: string): string {
-  return s
+  // ASCII-only slugs — Next.js dynamic routing struggles with non-ASCII path
+  // segments (encoded URL → 404). Korean/CJK titles fall through to the
+  // untitled fallback at save time.
+  const ascii = s
     .toLowerCase()
     .trim()
-    .replace(/[^\p{L}\p{N}\s-]/gu, "")
+    .replace(/[^a-z0-9\s-]/g, "")
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
     .slice(0, 80);
+  return ascii;
 }
 
 function readAsDataUrl(file: File): Promise<string> {
@@ -1025,9 +1030,14 @@ export default function ProjectForm({
           <Field label="Category">
             <select
               value={s.category}
-              onChange={(e) =>
-                set("category", e.target.value as Project["category"])
-              }
+              onChange={(e) => {
+                const next = e.target.value as Project["category"];
+                setS((p) => {
+                  const allowed = subsForMain(next);
+                  const keepSub = p.subCategory && (allowed as readonly string[]).includes(p.subCategory);
+                  return { ...p, category: next, subCategory: keepSub ? p.subCategory : "" };
+                });
+              }}
               className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm outline-none focus:border-foreground"
             >
               <option value="Project">Project</option>
@@ -1042,7 +1052,7 @@ export default function ProjectForm({
               className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm outline-none focus:border-foreground"
             >
               <option value="">— 선택 안함 —</option>
-              {SUB_CATEGORIES.map((sc) => (
+              {subsForMain(s.category).map((sc) => (
                 <option key={sc} value={sc}>{sc}</option>
               ))}
             </select>

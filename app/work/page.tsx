@@ -5,7 +5,7 @@ import { useMemo, useState, useCallback, useEffect } from "react";
 import PageHeader from "@/components/PageHeader";
 import { deleteDraft } from "@/lib/draftStorage";
 import { deleteRemotePost, upsertRemotePost } from "@/lib/githubStorage";
-import { projects, staticPlaceholders, SUB_CATEGORIES, type SubCategory, type Project } from "@/lib/projects";
+import { projects, staticPlaceholders, subsForMain, type SubCategory, type Project } from "@/lib/projects";
 import deletedJson from "../../public/data/deleted.json";
 import { useDrafts } from "@/lib/useDrafts";
 import { asset } from "@/lib/asset";
@@ -134,6 +134,51 @@ export default function WorkPage() {
     }
   }, []);
 
+  const onPurgeOne = useCallback(async (record: DeletedRecord) => {
+    if (!confirm(`"${record.title || record.slug}" 을(를) 영구 삭제할까요? 복원할 수 없습니다.`)) return;
+    try {
+      const res = await fetch("/api/local/purge-trash", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: record.slug }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `요청 실패 (${res.status})`);
+      }
+    } catch (err) {
+      alert(`영구 삭제 실패: ${err instanceof Error ? err.message : "오류"}`);
+      return;
+    }
+    setDeletedRecords((prev) => prev.filter((d) => d.slug !== record.slug));
+  }, []);
+
+  const onPurgeAll = useCallback(async () => {
+    if (deletedRecords.length === 0) return;
+    if (
+      !confirm(
+        `휴지통 ${deletedRecords.length}개 항목을 모두 영구 삭제할까요?\n복원할 수 없습니다.`,
+      )
+    )
+      return;
+    try {
+      const res = await fetch("/api/local/purge-trash", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ all: true }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? `요청 실패 (${res.status})`);
+      }
+    } catch (err) {
+      alert(`영구 삭제 실패: ${err instanceof Error ? err.message : "오류"}`);
+      return;
+    }
+    setDeletedRecords([]);
+    setArchiveOpen(false);
+  }, [deletedRecords.length]);
+
   const onRestore = useCallback(async (record: DeletedRecord) => {
     if (!confirm(`"${record.title || record.slug}" 글을 복원할까요?`)) return;
     const { deletedAt: _del, ...project } = record;
@@ -178,7 +223,10 @@ export default function WorkPage() {
                   <button
                     key={f}
                     type="button"
-                    onClick={() => setMain(f)}
+                    onClick={() => {
+                      setMain(f);
+                      if (sub !== "All" && !subsForMain(f).includes(sub)) setSub("All");
+                    }}
                     className={`rounded-full px-3 sm:px-4 py-1 sm:py-1.5 text-xs sm:text-sm transition border ${
                       main === f
                         ? "bg-foreground text-background border-foreground"
@@ -216,7 +264,7 @@ export default function WorkPage() {
               >
                 All
               </button>
-              {SUB_CATEGORIES.map((s) => (
+              {subsForMain(main).map((s) => (
                 <button
                   key={s}
                   type="button"
@@ -233,9 +281,9 @@ export default function WorkPage() {
             </div>
           </div>
 
-          {/* Grid */}
-          <ul className="grid gap-3 sm:gap-6 grid-cols-2 sm:grid-cols-2">
-            {visible.map((r) => (
+          {/* Grid(s) */}
+          {(() => {
+            const renderCard = (r: Row) => (
               <li key={(r.isDraft ? "d:" : "p:") + r.slug} className="relative">
                 <Link
                   href={r.href}
@@ -347,26 +395,123 @@ export default function WorkPage() {
                   </div>
                 )}
               </li>
-            ))}
-          </ul>
+            );
 
-          {visible.length === 0 && (
-            <p className="text-sm text-muted py-12 text-center">표시할 글이 없습니다.</p>
-          )}
+            type Tone = "project" | "personal" | "sub";
+            const SectionHeader = ({
+              label,
+              count,
+              tone,
+            }: {
+              label: string;
+              count: number;
+              tone: Tone;
+            }) => {
+              const bar =
+                tone === "project"
+                  ? "bg-accent"
+                  : tone === "personal"
+                  ? "bg-blue-500"
+                  : "bg-foreground/40";
+              const text =
+                tone === "project"
+                  ? "text-accent"
+                  : tone === "personal"
+                  ? "text-blue-500"
+                  : "text-foreground";
+              return (
+                <div className="mb-3 sm:mb-4 flex items-end justify-between gap-3 pb-2 border-b border-border/60">
+                  <div className="flex items-center gap-2.5">
+                    <span className={`block w-0.5 h-4 sm:h-5 ${bar} rounded-full`} />
+                    <h2 className={`font-mono text-[11px] sm:text-sm uppercase tracking-[0.22em] font-semibold ${text}`}>
+                      {label}
+                    </h2>
+                  </div>
+                  <span className="font-mono text-[10px] sm:text-xs text-muted tabular-nums">
+                    {count}
+                  </span>
+                </div>
+              );
+            };
+
+            type SectionDef = { label: string; tone: Tone; rows: Row[] };
+            const sections: SectionDef[] = [];
+
+            if (sub !== "All") {
+              // User picked a specific sub — flat grid, no sectioning.
+            } else if (main === "All") {
+              const proj = visible.filter((r) => r.category === "Project");
+              const pers = visible.filter((r) => r.category === "Personal");
+              if (proj.length) sections.push({ label: "Project", tone: "project", rows: proj });
+              if (pers.length) sections.push({ label: "Personal", tone: "personal", rows: pers });
+            } else {
+              // main === Project | Personal, sub === All → group by sub-category
+              const subs = subsForMain(main);
+              for (const sc of subs) {
+                const rs = visible.filter((r) => r.subCategory === sc);
+                if (rs.length) sections.push({ label: sc, tone: "sub", rows: rs });
+              }
+              const uncategorized = visible.filter((r) => !r.subCategory);
+              if (uncategorized.length) {
+                sections.push({ label: "기타", tone: "sub", rows: uncategorized });
+              }
+            }
+
+            if (sections.length === 0) {
+              return (
+                <>
+                  <ul className="grid gap-3 sm:gap-6 grid-cols-2 sm:grid-cols-2">
+                    {visible.map(renderCard)}
+                  </ul>
+                  {visible.length === 0 && (
+                    <p className="text-sm text-muted py-12 text-center">표시할 글이 없습니다.</p>
+                  )}
+                </>
+              );
+            }
+
+            return (
+              <>
+                {sections.map((sec, i) => (
+                  <section
+                    key={sec.label}
+                    className={i < sections.length - 1 ? "mb-8 sm:mb-12" : ""}
+                  >
+                    <SectionHeader label={sec.label} count={sec.rows.length} tone={sec.tone} />
+                    <ul className="grid gap-3 sm:gap-6 grid-cols-2 sm:grid-cols-2">
+                      {sec.rows.map(renderCard)}
+                    </ul>
+                  </section>
+                ))}
+              </>
+            );
+          })()}
 
           {admin && deletedRecords.length > 0 && (
             <div className="mt-12 border-t border-border pt-6">
-              <button
-                type="button"
-                onClick={() => setArchiveOpen((v) => !v)}
-                className="flex items-center gap-2 font-mono text-xs text-muted hover:text-foreground transition"
-              >
-                <span>🗑 휴지통</span>
-                <span className="rounded-full bg-foreground/5 px-2 py-0.5 text-[10px]">
-                  {deletedRecords.length}
-                </span>
-                <span className="text-[10px]">{archiveOpen ? "▾" : "▸"}</span>
-              </button>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setArchiveOpen((v) => !v)}
+                  className="flex items-center gap-2 font-mono text-xs text-muted hover:text-foreground transition"
+                >
+                  <span>🗑 휴지통</span>
+                  <span className="rounded-full bg-foreground/5 px-2 py-0.5 text-[10px]">
+                    {deletedRecords.length}
+                  </span>
+                  <span className="text-[10px]">{archiveOpen ? "▾" : "▸"}</span>
+                </button>
+                {archiveOpen && (
+                  <button
+                    type="button"
+                    onClick={onPurgeAll}
+                    className="rounded-full border border-red-500/40 px-3 py-1 text-xs font-mono text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 transition"
+                    title="휴지통의 모든 항목을 영구 삭제합니다 (복원 불가)"
+                  >
+                    🗑 휴지통 비우기
+                  </button>
+                )}
+              </div>
 
               {archiveOpen && (
                 <ul className="mt-4 grid gap-2">
@@ -385,13 +530,23 @@ export default function WorkPage() {
                             {d.slug} · 삭제 {d.deletedAt.slice(0, 10)}
                           </p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => onRestore(d)}
-                          className="rounded-full border border-accent/40 px-3 py-1 text-xs font-mono text-accent hover:bg-accent/10 transition"
-                        >
-                          복원
-                        </button>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => onRestore(d)}
+                            className="rounded-full border border-accent/40 px-3 py-1 text-xs font-mono text-accent hover:bg-accent/10 transition"
+                          >
+                            복원
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onPurgeOne(d)}
+                            className="rounded-full border border-red-500/40 px-3 py-1 text-xs font-mono text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 transition"
+                            title="이 항목 영구 삭제"
+                          >
+                            영구 삭제
+                          </button>
+                        </div>
                       </li>
                     ))}
                 </ul>

@@ -139,11 +139,18 @@
       "desc": "언리얼엔진 5를 활용한 시네마틱&인게임 라이팅 개념과 이론을 습득하여 게임 라이팅 포트폴리오를 제작"
     }
   ],
-  "portfolio.resume.collapsed": false,
-  "portfolio.about.files": [],
+  "portfolio.resume.collapsed": true,
+  "portfolio.about.files": [
+    {
+      "kind": "link",
+      "title": "자소서, 경력기술서 파일",
+      "url": "https://naver.me/5M5GbCOM",
+      "description": "자기소개서/경력기술서 파일을 다운받을 수 있는 링크입니다."
+    }
+  ],
   "portfolio.about.collapsed.expertise": false,
   "portfolio.about.collapsed.intro": true,
   "portfolio.about.collapsed.downloads": true,
-  "portfolio.about.collapsed.stack": false,
+  "portfolio.about.collapsed.stack": true,
   "portfolio.about.intro": "테크니컬 아티스트로서 시각적 비전과 기술적 실현 사이의 다리를 놓고자 합니다.\n셰이딩, 파이프라인 자동화, 실시간 최적화 영역에서 아티스트가 더 멀리 갈 수 있게 돕는 도구와 시스템을 만듭니다."
 }

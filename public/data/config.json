@@ -133,13 +133,13 @@
   },
   "portfolio.resume.training": [
     {
-      "role": "패스트캠퍼스 언리얼 포트폴리오",
-      "company": "기관명",
+      "role": "[바이트디그리 EXPORT] 언리얼5를 활용한 게임그래픽 라이팅",
+      "company": "패스트캠퍼스",
       "period": "2023",
-      "desc": "이수 내용 설명."
+      "desc": "언리얼엔진 5를 활용한 시네마틱&인게임 라이팅 개념과 이론을 습득하여 게임 라이팅 포트폴리오를 제작"
     }
   ],
-  "portfolio.resume.collapsed": true,
+  "portfolio.resume.collapsed": false,
   "portfolio.about.files": [],
   "portfolio.about.collapsed.expertise": false,
   "portfolio.about.collapsed.intro": true,

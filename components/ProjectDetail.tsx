@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
 import BodyView from "@/components/BodyView";
 import { MediaGallery } from "@/components/Media";
+import PostToc, { type TocHeading } from "@/components/PostToc";
+import ReadingProgress from "@/components/ReadingProgress";
 import { formatProjectDate, type Project } from "@/lib/projects";
 import { useAdmin } from "@/hooks/useAdmin";
 
@@ -27,8 +30,134 @@ export default function ProjectDetail({
   const resolvedEditHref = editHref ?? (admin ? `/work/edit?slug=${project.slug}` : undefined);
   const htmlBody = isHtmlBody(project);
 
+  const [headings, setHeadings] = useState<TocHeading[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const headingsRef = useRef<TocHeading[]>([]);
+  const didInitialJumpRef = useRef(false);
+  const pendingScrollRef = useRef<{ id: string; smooth: boolean } | null>(null);
+
+  useEffect(() => {
+    headingsRef.current = headings;
+  }, [headings]);
+
+  const performScroll = useCallback(
+    (top: number, smooth: boolean) => {
+      const frame = iframeRef.current;
+      if (!frame) return;
+      const rect = frame.getBoundingClientRect();
+      const target = rect.top + window.scrollY + top - 96;
+      window.scrollTo({
+        top: Math.max(0, target),
+        behavior: smooth ? "smooth" : "auto",
+      });
+    },
+    [],
+  );
+
+  const scrollToHeading = useCallback(
+    (id: string) => {
+      const frame = iframeRef.current;
+      if (!frame) return;
+      const heading = headingsRef.current.find((h) => h.id === id);
+      pendingScrollRef.current = { id, smooth: true };
+      // 1) 즉시 저장된 위치로 스크롤 (응답 없어도 작동)
+      if (heading) performScroll(heading.top, true);
+      // 2) iframe에 라이브 위치 요청 — 응답 도착 시 보정
+      frame.contentWindow?.postMessage({ type: "toc-query", id }, "*");
+      if (typeof history !== "undefined") {
+        history.replaceState(null, "", `#${id}`);
+      }
+    },
+    [performScroll],
+  );
+
+  const onTocPosition = useCallback(
+    (id: string, top: number | null) => {
+      const pending = pendingScrollRef.current;
+      if (!pending || pending.id !== id) return;
+      pendingScrollRef.current = null;
+      if (top == null) return;
+      performScroll(top, pending.smooth);
+    },
+    [performScroll],
+  );
+
+  useEffect(() => {
+    if (!htmlBody) return;
+    if (headings.length > 0) return;
+    let attempts = 0;
+    const interval = window.setInterval(() => {
+      if (attempts++ >= 20) {
+        window.clearInterval(interval);
+        return;
+      }
+      iframeRef.current?.contentWindow?.postMessage(
+        { type: "toc-refresh" },
+        "*",
+      );
+    }, 300);
+    return () => window.clearInterval(interval);
+  }, [htmlBody, headings.length]);
+
+  useEffect(() => {
+    if (!htmlBody) return;
+    if (didInitialJumpRef.current) return;
+    if (headings.length === 0) return;
+    if (typeof window === "undefined") return;
+    const hash = decodeURIComponent(window.location.hash.slice(1));
+    if (!hash) return;
+    const heading = headings.find((h) => h.id === hash);
+    if (!heading) return;
+    didInitialJumpRef.current = true;
+    const frame = iframeRef.current;
+    if (!frame) return;
+    pendingScrollRef.current = { id: hash, smooth: false };
+    performScroll(heading.top, false);
+    frame.contentWindow?.postMessage({ type: "toc-query", id: hash }, "*");
+  }, [headings, htmlBody, performScroll]);
+
+  useEffect(() => {
+    if (!htmlBody || headings.length === 0) return;
+    function onScroll() {
+      const frame = iframeRef.current;
+      if (!frame) return;
+      const doc = document.documentElement;
+      const vh = window.innerHeight;
+      const scrollable = doc.scrollHeight - vh;
+      const nearBottom =
+        scrollable > 0 && window.scrollY >= scrollable - 2;
+      if (nearBottom) {
+        setActiveId(headings[headings.length - 1].id);
+        return;
+      }
+      const rect = frame.getBoundingClientRect();
+      const frameTopAbs = rect.top + window.scrollY;
+      const probe = window.scrollY + vh * 0.5;
+      let bestTop = -Infinity;
+      let bestId: string | null = null;
+      for (const h of headings) {
+        const ht = frameTopAbs + h.top;
+        if (ht <= probe && ht > bestTop) {
+          bestTop = ht;
+          bestId = h.id;
+        }
+      }
+      if (bestId == null) bestId = headings[0]?.id ?? null;
+      setActiveId(bestId);
+    }
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [headings, htmlBody]);
+
   return (
     <article>
+      {htmlBody && <ReadingProgress />}
       <header className="px-4 sm:px-6 pt-28 pb-8 sm:pt-40 sm:pb-16">
         <div className="mx-auto w-full max-w-none">
           <div className="flex items-center justify-between gap-4 mb-8">
@@ -143,7 +272,27 @@ export default function ProjectDetail({
 
       {htmlBody ? (
         <section className="block">
-          <BodyView source={project.body} format={project.bodyFormat} className="block w-full" />
+          <div className="flex lg:gap-8 px-0 lg:pl-6">
+            <PostToc
+              headings={headings}
+              activeId={activeId}
+              onSelect={scrollToHeading}
+            />
+            <div className="flex-1 min-w-0">
+              <BodyView
+                source={project.body}
+                format={project.bodyFormat}
+                className="block w-full"
+                onIframeReady={(el) => {
+                  iframeRef.current = el;
+                }}
+                onTocHeadings={(hs) =>
+                  setHeadings(hs.filter((h) => h.level === 2))
+                }
+                onTocPosition={onTocPosition}
+              />
+            </div>
+          </div>
         </section>
       ) : (
         <section className="border-t border-border px-4 sm:px-6 py-12 sm:py-24">

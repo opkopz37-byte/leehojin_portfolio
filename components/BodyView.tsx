@@ -4,6 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import MarkdownView from "@/components/MarkdownView";
 import { rewriteHtmlAssetPaths } from "@/lib/asset";
 
+type TocHeading = {
+  id: string;
+  text: string;
+  level: number;
+  top: number;
+};
+
 type Props = {
   source: string;
   format?: "markdown" | "html";
@@ -12,6 +19,8 @@ type Props = {
   wysiwyg?: boolean;
   onContentChange?: (html: string) => void;
   onIframeReady?: (iframe: HTMLIFrameElement | null) => void;
+  onTocHeadings?: (headings: TocHeading[]) => void;
+  onTocPosition?: (id: string, top: number | null) => void;
 };
 
 function detectFormat(source: string): "markdown" | "html" {
@@ -28,6 +37,8 @@ export default function BodyView({
   wysiwyg = false,
   onContentChange,
   onIframeReady,
+  onTocHeadings,
+  onTocPosition,
 }: Props) {
   const resolved = format ?? detectFormat(source);
   if (resolved === "html") {
@@ -39,6 +50,8 @@ export default function BodyView({
         wysiwyg={wysiwyg}
         onContentChange={onContentChange}
         onIframeReady={onIframeReady}
+        onTocHeadings={onTocHeadings}
+        onTocPosition={onTocPosition}
       />
     );
   }
@@ -46,6 +59,90 @@ export default function BodyView({
 }
 
 const RESIZE_SCRIPT = `<script data-injected="1">(function(){function r(){try{var h=Math.max(document.documentElement.scrollHeight,document.body?document.body.scrollHeight:0);parent.postMessage({type:'body-height',h:h},'*');}catch(e){}}window.addEventListener('load',r);if(typeof ResizeObserver!=='undefined'){try{new ResizeObserver(r).observe(document.documentElement);}catch(e){}}setInterval(r,400);setTimeout(r,200);setTimeout(r,1200);})();<\/script>`;
+
+const TOC_SCRIPT = `<script data-injected="1">(function(){
+function slug(s){return (s||'').toLowerCase().trim().replace(/[^\\w\\u3131-\\uD79D\\s-]/g,'').replace(/\\s+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'').slice(0,80)||'h';}
+function offTop(el){var t=0;while(el){t+=el.offsetTop||0;el=el.offsetParent;}return t;}
+function matchesAny(el,patterns){if(!el.className||typeof el.className!=='string')return null;var cn=el.className;for(var i=0;i<patterns.length;i++){if(patterns[i][0].test(cn))return patterns[i][1];}return null;}
+function collect(){
+  var seen=new Set();
+  var nodes=[];
+  // 1. Standard heading tags
+  var hs=document.querySelectorAll('h1,h2,h3,h4,h5,h6');
+  for(var i=0;i<hs.length;i++){
+    var h=hs[i];
+    if(h.closest&&h.closest('[data-injected="1"]'))continue;
+    nodes.push({el:h,level:parseInt(h.tagName.substring(1),10)});
+    seen.add(h);
+  }
+  // 2. Custom title classes commonly used as section headers
+  var classLevels=[
+    [/\\bpage-title\\b/,1],
+    [/\\bsection-title\\b/,2],
+    [/\\b(s-title|sec-title|ext-title|chapter-title|block-title)\\b/,3]
+  ];
+  var classSelector='[class*="page-title"],[class*="section-title"],[class*="s-title"],[class*="sec-title"],[class*="ext-title"],[class*="chapter-title"],[class*="block-title"]';
+  var cands=document.querySelectorAll(classSelector);
+  for(var j=0;j<cands.length;j++){
+    var el=cands[j];
+    if(seen.has(el))continue;
+    if(el.closest&&el.closest('[data-injected="1"]'))continue;
+    var lvl=matchesAny(el,classLevels);
+    if(!lvl)continue;
+    // skip if inside a button/anchor/code/pre or no visible text
+    var tag=el.tagName;
+    if(tag==='BUTTON'||tag==='A'||tag==='CODE'||tag==='PRE'||tag==='LABEL')continue;
+    var txt=(el.textContent||'').trim();
+    if(!txt||txt.length>200)continue;
+    nodes.push({el:el,level:lvl});
+    seen.add(el);
+  }
+  // 3. Sort by document order
+  nodes.sort(function(a,b){
+    if(a.el===b.el)return 0;
+    var pos=a.el.compareDocumentPosition(b.el);
+    if(pos&Node.DOCUMENT_POSITION_FOLLOWING)return -1;
+    if(pos&Node.DOCUMENT_POSITION_PRECEDING)return 1;
+    return 0;
+  });
+  // 4. Assign IDs and build output
+  var out=[];var ids={};
+  for(var k=0;k<nodes.length;k++){
+    var n=nodes[k];var e=n.el;
+    if(!e.id){
+      var base=slug(e.textContent||('section-'+k));
+      var id=base;var m=1;while(ids[id]){m++;id=base+'-'+m;}
+      e.id=id;
+    }
+    ids[e.id]=1;
+    out.push({id:e.id,text:(e.textContent||'').trim().slice(0,200),level:n.level,top:offTop(e)});
+  }
+  return out;
+}
+var last='';
+function emit(){
+  try{
+    var hs=collect();
+    var key=hs.map(function(h){return h.id+':'+h.top;}).join('|');
+    if(key===last)return;
+    last=key;
+    parent.postMessage({type:'toc-headings',headings:hs},'*');
+  }catch(e){}
+}
+window.addEventListener('load',emit);
+if(typeof ResizeObserver!=='undefined'){try{new ResizeObserver(emit).observe(document.documentElement);}catch(e){}}
+if(typeof MutationObserver!=='undefined'){try{new MutationObserver(emit).observe(document.documentElement,{childList:true,subtree:true,characterData:true});}catch(e){}}
+window.addEventListener('message',function(e){
+  if(!e.data)return;
+  if(e.data.type==='toc-refresh'){last='';emit();return;}
+  if(e.data.type!=='toc-query')return;
+  var id=e.data.id;if(!id)return;
+  last='';emit();
+  var el=document.getElementById(id);
+  parent.postMessage({type:'toc-pos',id:id,top:el?offTop(el):null},'*');
+});
+setInterval(emit,1000);setTimeout(emit,200);setTimeout(emit,800);setTimeout(emit,1800);
+})();<\/script>`;
 
 const EDITOR_SCRIPT = `<script data-injected="1">(function(){
 function pathOf(el){if(!el||el===document.body)return [];var path=[];while(el&&el!==document.body){var p=el.parentElement;if(!p)return null;var idx=Array.prototype.indexOf.call(p.children,el);if(idx<0)return null;path.unshift(idx);el=p;}return el===document.body?path:null;}
@@ -189,7 +286,7 @@ function buildSrcDoc(source: string, editorMode: boolean): string {
   // 2. Inject mobile-reset style last in <head> (wins over post's same-specificity rules)
   html = injectHead(html, MOBILE_RESET_STYLE);
   // 3. Inject runtime scripts before </body>
-  html = injectScripts(html, RESIZE_SCRIPT + (editorMode ? EDITOR_SCRIPT + WYSIWYG_SCRIPT : ""));
+  html = injectScripts(html, RESIZE_SCRIPT + TOC_SCRIPT + (editorMode ? EDITOR_SCRIPT + WYSIWYG_SCRIPT : ""));
   return html;
 }
 
@@ -200,6 +297,8 @@ function HtmlSandbox({
   wysiwyg = false,
   onContentChange,
   onIframeReady,
+  onTocHeadings,
+  onTocPosition,
 }: {
   source: string;
   className: string;
@@ -207,6 +306,8 @@ function HtmlSandbox({
   wysiwyg?: boolean;
   onContentChange?: (html: string) => void;
   onIframeReady?: (iframe: HTMLIFrameElement | null) => void;
+  onTocHeadings?: (headings: TocHeading[]) => void;
+  onTocPosition?: (id: string, top: number | null) => void;
 }) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const onIframeReadyRef = useRef(onIframeReady);
@@ -214,12 +315,23 @@ function HtmlSandbox({
   const [height, setHeight] = useState(800);
   const onContentChangeRef = useRef(onContentChange);
   useEffect(() => { onContentChangeRef.current = onContentChange; });
+  const onTocHeadingsRef = useRef(onTocHeadings);
+  useEffect(() => { onTocHeadingsRef.current = onTocHeadings; });
+  const onTocPositionRef = useRef(onTocPosition);
+  useEffect(() => { onTocPositionRef.current = onTocPosition; });
 
   const srcDoc = buildSrcDoc(source, editorMode);
 
   useEffect(() => {
     function onMessage(e: MessageEvent) {
-      const data = e.data as { type?: string; h?: number; html?: string } | null;
+      const data = e.data as {
+        type?: string;
+        h?: number;
+        html?: string;
+        headings?: TocHeading[];
+        id?: string;
+        top?: number | null;
+      } | null;
       if (!data) return;
       const frame = iframeRef.current;
       if (!frame || frame.contentWindow !== e.source) return;
@@ -228,6 +340,12 @@ function HtmlSandbox({
       }
       if (data.type === "wysiwyg-html" && typeof data.html === "string") {
         onContentChangeRef.current?.(data.html);
+      }
+      if (data.type === "toc-headings" && Array.isArray(data.headings)) {
+        onTocHeadingsRef.current?.(data.headings);
+      }
+      if (data.type === "toc-pos" && typeof data.id === "string") {
+        onTocPositionRef.current?.(data.id, typeof data.top === "number" ? data.top : null);
       }
     }
     window.addEventListener("message", onMessage);

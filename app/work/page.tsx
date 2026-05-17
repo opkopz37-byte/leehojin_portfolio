@@ -99,8 +99,13 @@ export default function WorkPage() {
     });
     const all = [...draftRows, ...published];
     return all.sort((a, b) => {
-      const dateA = a.endDate ?? a.startDate ?? "";
-      const dateB = b.endDate ?? b.startDate ?? "";
+      const dateA = a.endDate || a.startDate || "";
+      const dateB = b.endDate || b.startDate || "";
+      if (dateA === dateB) {
+        const startA = a.startDate || "";
+        const startB = b.startDate || "";
+        return startB.localeCompare(startA);
+      }
       return dateB.localeCompare(dateA);
     });
   }, [drafts, baseProjects]);

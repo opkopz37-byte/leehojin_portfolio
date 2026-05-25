@@ -7,6 +7,7 @@ import AdminBar from "@/components/AdminBar";
 import ScrollButtons from "@/components/ScrollButtons";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { siteConfig } from "@/lib/config";
+import { buildSiteSnapshot } from "@/lib/seoSnapshot";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -28,6 +29,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const snapshot = buildSiteSnapshot();
   return (
     <html
       lang="ko"
@@ -56,6 +58,15 @@ export default function RootLayout({
           <AdminBar />
           <ScrollButtons />
         </ThemeProvider>
+        {snapshot.length > 0 && (
+          <div className="sr-only">
+            {snapshot.map((block, i) => (
+              <p key={i} style={{ whiteSpace: "pre-line" }}>
+                {block}
+              </p>
+            ))}
+          </div>
+        )}
       </body>
     </html>
   );

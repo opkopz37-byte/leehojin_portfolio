@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { projects } from "@/lib/projects";
-import { siteConfig } from "@/lib/config";
 import { getMergedConfig, setOverride } from "@/lib/siteOverrides";
+import { getMergedSiteConfigFromFile } from "@/lib/configMerged";
 import { useAdmin } from "@/hooks/useAdmin";
 import InlineEdit from "@/components/InlineEdit";
 import { asset } from "@/lib/asset";
@@ -15,7 +15,7 @@ const slideImages = projects
 
 export default function Hero() {
   const [idx, setIdx] = useState(0);
-  const [cfg, setCfg] = useState(siteConfig);
+  const [cfg, setCfg] = useState(getMergedSiteConfigFromFile);
   const admin = useAdmin();
 
   useEffect(() => {

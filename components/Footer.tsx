@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { siteConfig } from "@/lib/config";
 import { getMergedConfig, setOverride } from "@/lib/siteOverrides";
+import { getMergedSiteConfigFromFile } from "@/lib/configMerged";
 import { useAdmin } from "@/hooks/useAdmin";
 import InlineEdit from "@/components/InlineEdit";
 
 export default function Footer() {
   const year = new Date().getFullYear();
-  const [cfg, setCfg] = useState(siteConfig);
+  const [cfg, setCfg] = useState(getMergedSiteConfigFromFile);
   const admin = useAdmin();
 
   useEffect(() => {

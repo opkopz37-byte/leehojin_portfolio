@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { categories } from "@/lib/categories";
-import { siteConfig } from "@/lib/config";
 import { getMergedConfig } from "@/lib/siteOverrides";
+import { getMergedSiteConfigFromFile } from "@/lib/configMerged";
 import ThemeToggle from "@/components/ThemeToggle";
 
 const links = [
@@ -16,7 +16,7 @@ const links = [
 export default function Nav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [cfg, setCfg] = useState(siteConfig);
+  const [cfg, setCfg] = useState(getMergedSiteConfigFromFile);
 
   useEffect(() => {
     setCfg(getMergedConfig());

@@ -4,9 +4,15 @@ import configJson from "../public/data/config.json";
 
 const _file = configJson as Record<string, unknown>;
 
-/** Read a value: localStorage first, then config.json, then code default */
+/** Read a value: in dev, localStorage first (so admin sees their unsaved
+ *  preview); in production, always config.json then code default — stale
+ *  localStorage from past admin sessions on the deployed origin would
+ *  otherwise shadow published edits. */
 export function loadConfigValue<T>(key: string, defaultValue: T): T {
-  if (typeof window !== "undefined") {
+  if (
+    typeof window !== "undefined" &&
+    process.env.NODE_ENV === "development"
+  ) {
     try {
       const local = localStorage.getItem(key);
       if (local !== null) return JSON.parse(local) as T;
